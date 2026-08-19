@@ -4,13 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
+import { useSession } from "@/lib/hooks/useSession";
 import { Logo } from "@/components/Logo";
+import type { AdminRole } from "@/lib/types";
 import {
   BarcodeIcon,
   CameraIcon,
   ChevronLeftIcon,
   DashboardIcon,
   FileTextIcon,
+  SlidersIcon,
 } from "@/components/icons";
 
 interface NavItem {
@@ -19,6 +22,8 @@ interface NavItem {
   icon: ReactNode;
   /** Exact match only — otherwise `/admin` would match every child route. */
   exact?: boolean;
+  /** When set, only these roles see the entry. */
+  roles?: AdminRole[];
 }
 
 export const ADMIN_NAV: NavItem[] = [
@@ -30,7 +35,17 @@ export const ADMIN_NAV: NavItem[] = [
     label: "Photo Requirements",
     icon: <CameraIcon />,
   },
+  {
+    href: "/admin/customer-fields",
+    label: "Customer Fields",
+    icon: <SlidersIcon />,
+    roles: ["superadmin"],
+  },
 ];
+
+export function navItemsForRole(role: AdminRole | undefined): NavItem[] {
+  return ADMIN_NAV.filter((item) => !item.roles || (role && item.roles.includes(role)));
+}
 
 export function isNavItemActive(pathname: string, item: NavItem): boolean {
   return item.exact
@@ -47,6 +62,8 @@ export function AdminSidebar({
   accountSlot?: ReactNode;
 }) {
   const pathname = usePathname();
+  const user = useSession();
+  const navItems = navItemsForRole(user?.role);
 
   return (
     <div className="flex h-full flex-col border-r border-line bg-surface">
@@ -58,7 +75,7 @@ export function AdminSidebar({
 
       <nav className="flex-1 overflow-y-auto p-3" aria-label="Admin">
         <ul className="flex flex-col gap-1">
-          {ADMIN_NAV.map((item) => {
+          {navItems.map((item) => {
             const active = isNavItemActive(pathname, item);
             return (
               <li key={item.href}>

@@ -11,22 +11,28 @@ export const metadata: Metadata = {
 
 export default function StatusPage() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-      <header className="text-center">
-        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[32px]">
-          Check Warranty Status
-        </h1>
-        <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-muted">
-          Enter your Warranty ID to check the current status of your
-          registration, validity period and coverage details.
-        </p>
-      </header>
+    <div className="relative isolate">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(226,98,13,0.09),transparent_70%)]"
+      />
+      <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+        <Suspense fallback={<LookupFallback />}>
+          <StatusLookup />
+        </Suspense>
+      </div>
+    </div>
+  );
+}
 
-      <Suspense
-        fallback={<Skeleton className="mx-auto mt-8 h-20 w-full rounded-xl" />}
-      >
-        <StatusLookup />
-      </Suspense>
+function LookupFallback() {
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-6">
+      <div className="flex flex-col items-center gap-3">
+        <Skeleton className="h-9 w-72" />
+        <Skeleton className="h-4 w-96 max-w-full" />
+      </div>
+      <Skeleton className="h-20 w-full rounded-xl" />
     </div>
   );
 }

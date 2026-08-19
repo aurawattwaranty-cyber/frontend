@@ -10,9 +10,12 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
 import { Alert, Skeleton } from "@/components/ui/Feedback";
 import { SearchIcon } from "@/components/icons";
+import { useCustomerExperience } from "@/lib/hooks/useCustomerExperience";
 import { WarrantyStatusResult } from "@/components/warranty/WarrantyStatusResult";
 
 export function StatusLookup() {
+  const experience = useCustomerExperience();
+  const copy = experience?.status;
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialId = searchParams.get("id") ?? "";
@@ -69,7 +72,17 @@ export function StatusLookup() {
   }
 
   return (
-    <div className="mt-8 flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
+      <header className="text-center">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-balance sm:text-[38px]">
+          {copy?.heading ?? "Check Warranty Status"}
+        </h1>
+        <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-pretty text-muted">
+          {copy?.subheading ??
+            "Enter your Warranty ID to check the current status of your registration, validity period and coverage details."}
+        </p>
+      </header>
+
       <Card>
         <CardBody className="p-3 sm:p-3">
           <form
@@ -83,7 +96,7 @@ export function StatusLookup() {
                 setValue(event.target.value);
                 if (error) setError(null);
               }}
-              placeholder="Enter Warranty ID (e.g. 1024)"
+              placeholder={copy?.searchPlaceholder || "Enter Warranty ID (e.g. 1024)"}
               aria-label="Warranty ID"
               leading={<SearchIcon />}
               containerClassName="flex-1"
@@ -124,9 +137,9 @@ export function StatusLookup() {
       ) : null}
 
       {!registration && !error && !searching ? (
-        <p className="text-center text-[13px] text-muted">
-          Your warranty ID was sent to you when the registration was submitted.
-          It also appears on your warranty certificate.
+        <p className="text-center text-[13px] text-pretty text-muted">
+          {copy?.helpText ??
+            "Your warranty ID was sent to you when the registration was submitted. It also appears on your warranty certificate."}
         </p>
       ) : null}
     </div>

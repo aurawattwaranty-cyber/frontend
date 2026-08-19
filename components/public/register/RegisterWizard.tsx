@@ -13,6 +13,7 @@ import { createWarrantyRegistration } from "@/lib/services/warranties";
 import { getProductModels } from "@/lib/services/products";
 import { useAsync, useMutation } from "@/lib/hooks/useAsync";
 import { useToast } from "@/components/ui/Toast";
+import { useCustomerExperience } from "@/lib/hooks/useCustomerExperience";
 import { RegistrationStepper } from "@/components/public/RegistrationStepper";
 import { SerialStep, VerifiedSerialSummary } from "./SerialStep";
 import { DetailsStep, EMPTY_DETAILS, type DetailsFormValue } from "./DetailsStep";
@@ -33,6 +34,7 @@ const STEP_INDEX: Record<Phase, number> = {
 export function RegisterWizard() {
   const searchParams = useSearchParams();
   const toast = useToast();
+  const experience = useCustomerExperience();
 
   const [phase, setPhase] = useState<Phase>("verify");
   const [serial, setSerial] = useState<SerialNumber | null>(null);
@@ -119,11 +121,12 @@ export function RegisterWizard() {
   return (
     <div className="animate-fade-up">
       <header className="text-center">
-        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[28px]">
-          Register Warranty
+        <h1 className="font-display text-[28px] font-bold tracking-tight text-balance sm:text-4xl">
+          {experience?.register.heading ?? "Register Warranty"}
         </h1>
-        <p className="mt-2 text-[14px] text-muted">
-          Complete the 3-step process to activate your hybrid inverter warranty.
+        <p className="mx-auto mt-3 max-w-md text-[14px] text-pretty text-muted">
+          {experience?.register.subheading ??
+            "Complete the 3-step process to activate your hybrid inverter warranty."}
         </p>
       </header>
 

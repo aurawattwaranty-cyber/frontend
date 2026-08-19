@@ -22,7 +22,14 @@ import {
   validatePhone,
   validatePincode,
   type Errors,
+  type FieldError,
 } from "@/lib/validation";
+import {
+  buildFieldLookup,
+  fieldProps,
+  sectionCopy,
+} from "@/lib/services/customer-experience";
+import { useCustomerExperience } from "@/lib/hooks/useCustomerExperience";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Checkbox, Input, Select, Textarea } from "@/components/ui/Field";
@@ -89,6 +96,86 @@ export function DetailsStep({
   onBack: () => void;
   onContinue: () => void;
 }) {
+  const experience = useCustomerExperience();
+  const lookup = useMemo(() => buildFieldLookup(experience), [experience]);
+
+  /** Resolved label/placeholder/hint/required/visible for one configured field. */
+  const field = (
+    id: string,
+    fallback: { label: string; placeholder?: string; hint?: string },
+  ) => fieldProps(lookup, id, fallback);
+
+  const customerSection = sectionCopy(experience, "customer", {
+    title: "Customer Information",
+    description: "The warranty certificate is issued in this name.",
+  });
+  const installerSection = sectionCopy(experience, "installer", {
+    title: "Installer Information",
+    description: "Details of the certified partner who installed the unit.",
+  });
+  const installationSection = sectionCopy(experience, "installation", {
+    title: "Installation Details",
+    description:
+      "Product details are taken from the serial you entered and the model you selected.",
+  });
+
+  const fullName = field("customer.fullName", { label: "Full Name" });
+  const phone = field("customer.phone", {
+    label: "Phone Number",
+    placeholder: "10 digit mobile number",
+  });
+  const email = field("customer.email", {
+    label: "Email",
+    placeholder: "name@example.com",
+  });
+  const address = field("customer.address", {
+    label: "Address",
+    placeholder: "House / flat number, street, area",
+  });
+  const city = field("customer.city", { label: "City" });
+  const state = field("customer.state", {
+    label: "State",
+    placeholder: "Select state",
+  });
+  const pincode = field("customer.pincode", { label: "PIN Code" });
+
+  const companyName = field("installer.companyName", {
+    label: "Installer Name / Company",
+  });
+  const contactName = field("installer.contactName", {
+    label: "Contact Person",
+  });
+  const contactNumber = field("installer.contactNumber", {
+    label: "Contact Number",
+  });
+  const installerEmail = field("installer.email", { label: "Email" });
+  const installerId = field("installer.installerId", {
+    label: "Installer ID / Registration Number",
+    placeholder: "AW-INST-0000",
+    hint: "Optional — printed on the Aurawatt partner certificate.",
+  });
+
+  const installationDate = field("installation.installationDate", {
+    label: "Installation Date",
+    hint: "Warranty coverage is calculated from this date.",
+  });
+  const installationAddress = field("installation.installationAddress", {
+    label: "Installation Address",
+    placeholder: "Full address of the site where the inverter is installed",
+  });
+  const batteryInstalled = field("installation.batteryInstalled", {
+    label: "A battery system was installed with this inverter",
+    hint: "Battery packs are covered by their own warranty term.",
+  });
+  const batteryModel = field("installation.batteryModelId", {
+    label: "Battery Model",
+    placeholder: "Select battery model",
+  });
+  const batterySerialField = field("installation.batterySerial", {
+    label: "Battery Serial Number",
+    placeholder: "Enter battery serial number",
+  });
+
   const [customerErrors, setCustomerErrors] = useState<Errors<CustomerDetails>>({});
   const [installerErrors, setInstallerErrors] = useState<Errors<InstallerDetails>>({});
   const [installationErrors, setInstallationErrors] = useState<
@@ -148,28 +235,76 @@ export function DetailsStep({
     event.preventDefault();
     const { customer, installer, installation } = value;
 
+    /**
+     * A field the super admin hid never blocks submission, and one they made
+     * optional is only checked once the customer has actually typed something.
+     */
+    const check = (
+      id: string,
+      value: string,
+      validate: () => FieldError,
+    ): FieldError => {
+      const config = lookup(id);
+      if (config && !config.visible && !config.locked) return undefined;
+      if (config && !config.required && !value.trim()) return undefined;
+      return validate();
+    };
+
     const nextCustomerErrors: Errors<CustomerDetails> = {
-      fullName: validateName(customer.fullName),
-      phone: validatePhone(customer.phone),
-      email: validateEmail(customer.email),
-      address: required(customer.address, "Address"),
-      city: required(customer.city, "City"),
-      state: required(customer.state, "State"),
-      pincode: validatePincode(customer.pincode),
+      fullName: check("customer.fullName", customer.fullName, () =>
+        validateName(customer.fullName),
+      ),
+      phone: check("customer.phone", customer.phone, () =>
+        validatePhone(customer.phone),
+      ),
+      email: check("customer.email", customer.email, () =>
+        validateEmail(customer.email),
+      ),
+      address: check("customer.address", customer.address, () =>
+        required(customer.address, "Address"),
+      ),
+      city: check("customer.city", customer.city, () =>
+        required(customer.city, "City"),
+      ),
+      state: check("customer.state", customer.state, () =>
+        required(customer.state, "State"),
+      ),
+      pincode: check("customer.pincode", customer.pincode, () =>
+        validatePincode(customer.pincode),
+      ),
     };
 
     const nextInstallerErrors: Errors<InstallerDetails> = {
-      companyName: required(installer.companyName, "Installer name or company"),
-      contactName: required(installer.contactName, "Contact person"),
-      contactNumber: validatePhone(installer.contactNumber, "Contact number"),
-      email: validateEmail(installer.email, "Installer email"),
+      companyName: check("installer.companyName", installer.companyName, () =>
+        required(installer.companyName, "Installer name or company"),
+      ),
+      contactName: check("installer.contactName", installer.contactName, () =>
+        required(installer.contactName, "Contact person"),
+      ),
+      contactNumber: check(
+        "installer.contactNumber",
+        installer.contactNumber,
+        () => validatePhone(installer.contactNumber, "Contact number"),
+      ),
+      email: check("installer.email", installer.email, () =>
+        validateEmail(installer.email, "Installer email"),
+      ),
     };
 
     const nextInstallationErrors: Errors<InstallationFormValue> = {
-      installationDate: validateInstallationDate(installation.installationDate),
+      installationDate: check(
+        "installation.installationDate",
+        installation.installationDate,
+        () => validateInstallationDate(installation.installationDate),
+      ),
       installationAddress: installation.sameAsCustomerAddress
         ? undefined
-        : required(installation.installationAddress, "Installation address"),
+        : check(
+            "installation.installationAddress",
+            installation.installationAddress,
+            () =>
+              required(installation.installationAddress, "Installation address"),
+          ),
       batteryModelId: installation.batteryInstalled
         ? installation.batteryModelId
           ? undefined
@@ -202,134 +337,148 @@ export function DetailsStep({
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
       <Card>
         <CardHeader
-          title="Customer Information"
-          description="The warranty certificate is issued in this name."
+          title={customerSection.title}
+          description={customerSection.description}
         />
         <CardBody className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Full Name"
-            value={value.customer.fullName}
-            onChange={(event) => setCustomer("fullName", event.target.value)}
-            error={customerErrors.fullName}
-            autoComplete="name"
-            required
-          />
-          <Input
-            label="Phone Number"
-            type="tel"
-            inputMode="numeric"
-            value={value.customer.phone}
-            onChange={(event) => setCustomer("phone", event.target.value)}
-            error={customerErrors.phone}
-            placeholder="10 digit mobile number"
-            autoComplete="tel"
-            required
-          />
-          <Input
-            label="Email"
-            type="email"
-            value={value.customer.email}
-            onChange={(event) => setCustomer("email", event.target.value)}
-            error={customerErrors.email}
-            placeholder="name@example.com"
-            autoComplete="email"
-            containerClassName="sm:col-span-2"
-            required
-          />
-          <Input
-            label="Address"
-            value={value.customer.address}
-            onChange={(event) => setCustomer("address", event.target.value)}
-            error={customerErrors.address}
-            placeholder="House / flat number, street, area"
-            autoComplete="street-address"
-            containerClassName="sm:col-span-2"
-            required
-          />
-          <Input
-            label="City"
-            value={value.customer.city}
-            onChange={(event) => setCustomer("city", event.target.value)}
-            error={customerErrors.city}
-            autoComplete="address-level2"
-            required
-          />
-          <Select
-            label="State"
-            value={value.customer.state}
-            onChange={(event) => setCustomer("state", event.target.value)}
-            error={customerErrors.state}
-            options={STATE_OPTIONS}
-            placeholder="Select state"
-            required
-          />
-          <Input
-            label="PIN Code"
-            inputMode="numeric"
-            maxLength={6}
-            value={value.customer.pincode}
-            onChange={(event) => setCustomer("pincode", event.target.value)}
-            error={customerErrors.pincode}
-            autoComplete="postal-code"
-            required
-          />
+          {fullName.visible ? (
+            <Input
+              {...fullName.props}
+              value={value.customer.fullName}
+              onChange={(event) => setCustomer("fullName", event.target.value)}
+              error={customerErrors.fullName}
+              autoComplete="name"
+            />
+          ) : null}
+          {phone.visible ? (
+            <Input
+              {...phone.props}
+              type="tel"
+              inputMode="numeric"
+              value={value.customer.phone}
+              onChange={(event) => setCustomer("phone", event.target.value)}
+              error={customerErrors.phone}
+              autoComplete="tel"
+            />
+          ) : null}
+          {email.visible ? (
+            <Input
+              {...email.props}
+              type="email"
+              value={value.customer.email}
+              onChange={(event) => setCustomer("email", event.target.value)}
+              error={customerErrors.email}
+              autoComplete="email"
+              containerClassName="sm:col-span-2"
+            />
+          ) : null}
+          {address.visible ? (
+            <Input
+              {...address.props}
+              value={value.customer.address}
+              onChange={(event) => setCustomer("address", event.target.value)}
+              error={customerErrors.address}
+              autoComplete="street-address"
+              containerClassName="sm:col-span-2"
+            />
+          ) : null}
+          {city.visible ? (
+            <Input
+              {...city.props}
+              value={value.customer.city}
+              onChange={(event) => setCustomer("city", event.target.value)}
+              error={customerErrors.city}
+              autoComplete="address-level2"
+            />
+          ) : null}
+          {state.visible ? (
+            <Select
+              {...state.props}
+              value={value.customer.state}
+              onChange={(event) => setCustomer("state", event.target.value)}
+              error={customerErrors.state}
+              options={STATE_OPTIONS}
+              placeholder={state.props.placeholder ?? "Select state"}
+            />
+          ) : null}
+          {pincode.visible ? (
+            <Input
+              {...pincode.props}
+              inputMode="numeric"
+              maxLength={6}
+              value={value.customer.pincode}
+              onChange={(event) => setCustomer("pincode", event.target.value)}
+              error={customerErrors.pincode}
+              autoComplete="postal-code"
+            />
+          ) : null}
         </CardBody>
       </Card>
 
       <Card>
         <CardHeader
-          title="Installer Information"
-          description="Details of the certified partner who installed the unit."
+          title={installerSection.title}
+          description={installerSection.description}
         />
         <CardBody className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Installer Name / Company"
-            value={value.installer.companyName}
-            onChange={(event) => setInstaller("companyName", event.target.value)}
-            error={installerErrors.companyName}
-            containerClassName="sm:col-span-2"
-            required
-          />
-          <Input
-            label="Contact Person"
-            value={value.installer.contactName}
-            onChange={(event) => setInstaller("contactName", event.target.value)}
-            error={installerErrors.contactName}
-            required
-          />
-          <Input
-            label="Contact Number"
-            type="tel"
-            inputMode="numeric"
-            value={value.installer.contactNumber}
-            onChange={(event) =>
-              setInstaller("contactNumber", event.target.value)
-            }
-            error={installerErrors.contactNumber}
-            required
-          />
-          <Input
-            label="Email"
-            type="email"
-            value={value.installer.email}
-            onChange={(event) => setInstaller("email", event.target.value)}
-            error={installerErrors.email}
-            required
-          />
-          <Input
-            label="Installer ID / Registration Number"
-            value={value.installer.installerId ?? ""}
-            onChange={(event) => setInstaller("installerId", event.target.value)}
-            hint="Optional — printed on the Aurawatt partner certificate."
-            placeholder="AW-INST-0000"
-          />
+          {companyName.visible ? (
+            <Input
+              {...companyName.props}
+              value={value.installer.companyName}
+              onChange={(event) =>
+                setInstaller("companyName", event.target.value)
+              }
+              error={installerErrors.companyName}
+              containerClassName="sm:col-span-2"
+            />
+          ) : null}
+          {contactName.visible ? (
+            <Input
+              {...contactName.props}
+              value={value.installer.contactName}
+              onChange={(event) =>
+                setInstaller("contactName", event.target.value)
+              }
+              error={installerErrors.contactName}
+            />
+          ) : null}
+          {contactNumber.visible ? (
+            <Input
+              {...contactNumber.props}
+              type="tel"
+              inputMode="numeric"
+              value={value.installer.contactNumber}
+              onChange={(event) =>
+                setInstaller("contactNumber", event.target.value)
+              }
+              error={installerErrors.contactNumber}
+            />
+          ) : null}
+          {installerEmail.visible ? (
+            <Input
+              {...installerEmail.props}
+              type="email"
+              value={value.installer.email}
+              onChange={(event) => setInstaller("email", event.target.value)}
+              error={installerErrors.email}
+            />
+          ) : null}
+          {installerId.visible ? (
+            <Input
+              {...installerId.props}
+              value={value.installer.installerId ?? ""}
+              onChange={(event) =>
+                setInstaller("installerId", event.target.value)
+              }
+            />
+          ) : null}
         </CardBody>
       </Card>
 
       <Card>
         <CardHeader
-          title="Installation Details"
-          description="Product details are taken from the serial you entered and the model you selected."
+          title={installationSection.title}
+          description={installationSection.description}
         />
         <CardBody className="flex flex-col gap-4">
           <div className="grid gap-4 rounded-lg border border-line bg-canvas-soft p-4 sm:grid-cols-3">
@@ -343,7 +492,7 @@ export function DetailsStep({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
-              label="Installation Date"
+              {...installationDate.props}
               type="date"
               max={today}
               min="2010-01-01"
@@ -352,8 +501,6 @@ export function DetailsStep({
                 setInstallation("installationDate", event.target.value)
               }
               error={installationErrors.installationDate}
-              hint="Warranty coverage is calculated from this date."
-              required
             />
           </div>
 
@@ -372,22 +519,24 @@ export function DetailsStep({
             </p>
           ) : (
             <Textarea
-              label="Installation Address"
+              {...installationAddress.props}
               rows={3}
               value={value.installation.installationAddress}
               onChange={(event) =>
                 setInstallation("installationAddress", event.target.value)
               }
               error={installationErrors.installationAddress}
-              placeholder="Full address of the site where the inverter is installed"
-              required
             />
           )}
 
-          <div className="border-t border-line pt-4">
+          <div
+            className={
+              batteryInstalled.visible ? "border-t border-line pt-4" : "hidden"
+            }
+          >
             <Checkbox
-              label="A battery system was installed with this inverter"
-              hint="Battery packs are covered by their own warranty term."
+              label={batteryInstalled.props.label}
+              hint={batteryInstalled.props.hint}
               checked={value.installation.batteryInstalled}
               onChange={(event) =>
                 setInstallation("batteryInstalled", event.target.checked)
@@ -397,7 +546,7 @@ export function DetailsStep({
             {value.installation.batteryInstalled ? (
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <Select
-                  label="Battery Model"
+                  {...batteryModel.props}
                   value={value.installation.batteryModelId}
                   onChange={(event) =>
                     setInstallation("batteryModelId", event.target.value)
@@ -405,13 +554,14 @@ export function DetailsStep({
                   error={installationErrors.batteryModelId}
                   options={batteryOptions}
                   placeholder={
-                    batteryModels.loading ? "Loading models…" : "Select battery model"
+                    batteryModels.loading
+                      ? "Loading models…"
+                      : (batteryModel.props.placeholder ?? "Select battery model")
                   }
                   disabled={batteryModels.loading}
-                  required
                 />
                 <Input
-                  label="Battery Serial Number"
+                  {...batterySerialField.props}
                   value={value.installation.batterySerial}
                   onChange={(event) =>
                     setInstallation(
@@ -420,9 +570,7 @@ export function DetailsStep({
                     )
                   }
                   error={installationErrors.batterySerial}
-                  placeholder="Enter battery serial number"
                   monospace
-                  required
                 />
               </div>
             ) : null}

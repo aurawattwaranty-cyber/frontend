@@ -14,6 +14,8 @@ import { formatCapacity, formatDate, formatDateTime } from "@/lib/utils/format";
 import { WARRANTY_STATUS_META, WarrantyStatusBadge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader, DetailRow } from "@/components/ui/Card";
+import { useCustomerExperience } from "@/lib/hooks/useCustomerExperience";
+import { blockLabel, isBlockVisible } from "@/lib/services/customer-experience";
 import { Alert } from "@/components/ui/Feedback";
 import { Modal } from "@/components/ui/Modal";
 import { Textarea } from "@/components/ui/Field";
@@ -30,6 +32,8 @@ export function WarrantyStatusResult({
   onUpdated?: () => void;
 }) {
   const toast = useToast();
+  const experience = useCustomerExperience();
+  const showBlock = (id: string) => isBlockVisible(experience, id);
   const [resubmitOpen, setResubmitOpen] = useState(false);
   const [note, setNote] = useState("");
 
@@ -84,35 +88,49 @@ export function WarrantyStatusResult({
           </p>
 
           <dl className="grid gap-4 pt-4 sm:grid-cols-2">
-            <DetailRow label="Serial Number" value={registration.serial} monospace />
-            <DetailRow label="Product" value={registration.modelName} />
             <DetailRow
-              label="Capacity"
-              value={formatCapacity(
-                registration.capacityKw,
-                registration.productType,
-              )}
+              label={blockLabel(experience, "serial", "Serial Number")}
+              value={registration.serial}
+              monospace
             />
-            <DetailRow
-              label="Submitted On"
-              value={formatDateTime(registration.submittedAt)}
-            />
-            {registration.status === "active" ||
-            registration.status === "expired" ? (
+            {showBlock("product") ? (
               <DetailRow
-                label="Customer"
+                label={blockLabel(experience, "product", "Product")}
+                value={registration.modelName}
+              />
+            ) : null}
+            {showBlock("capacity") ? (
+              <DetailRow
+                label={blockLabel(experience, "capacity", "Capacity")}
+                value={formatCapacity(
+                  registration.capacityKw,
+                  registration.productType,
+                )}
+              />
+            ) : null}
+            {showBlock("submittedOn") ? (
+              <DetailRow
+                label={blockLabel(experience, "submittedOn", "Submitted On")}
+                value={formatDateTime(registration.submittedAt)}
+              />
+            ) : null}
+            {showBlock("customer") &&
+            (registration.status === "active" ||
+              registration.status === "expired") ? (
+              <DetailRow
+                label={blockLabel(experience, "customer", "Customer")}
                 value={registration.customer.fullName}
               />
             ) : null}
-            {registration.reviewedAt ? (
+            {showBlock("reviewedOn") && registration.reviewedAt ? (
               <DetailRow
-                label="Last Reviewed"
+                label={blockLabel(experience, "reviewedOn", "Last Reviewed")}
                 value={formatDateTime(registration.reviewedAt)}
               />
             ) : null}
           </dl>
 
-          {hasCertificate ? (
+          {hasCertificate && showBlock("coverage") ? (
             <WarrantyCoverage registration={registration} className="mt-5" />
           ) : null}
         </CardBody>
@@ -202,10 +220,14 @@ export function WarrantyStatusResult({
         </Card>
       ) : null}
 
-      {hasCertificate ? (
+      {hasCertificate && showBlock("certificate") ? (
         <Card>
           <CardHeader
-            title="Certificate & verification"
+            title={blockLabel(
+              experience,
+              "certificate",
+              "Certificate & verification",
+            )}
             description={
               registration.status === "expired"
                 ? "The warranty term has ended. Your certificate remains available for your records."

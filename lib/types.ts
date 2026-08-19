@@ -151,11 +151,14 @@ export interface SerialValidationResult {
   existingWarrantyId?: string;
 }
 
+/** `superadmin` is a superset of `admin`; it also owns the public field config. */
+export type AdminRole = "superadmin" | "admin" | "verifier";
+
 export interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "verifier";
+  role: AdminRole;
 }
 
 export interface DashboardStats {
@@ -209,4 +212,61 @@ export interface BulkImportResult {
   imported: number;
   failed: number;
   errors: { rowNumber: number; serial: string; error: string }[];
+}
+
+/* ------------------------------------------------------------------ *
+ * Customer experience configuration
+ *
+ * Mirrors the backend contract. The public register wizard and status page
+ * render from this, so a super admin can relabel, reorder, hide or require the
+ * fields a customer sees without a deploy.
+ * ------------------------------------------------------------------ */
+
+export type CustomerFieldSection = "customer" | "installer" | "installation";
+
+export interface CustomerFieldConfig {
+  /** Stable dotted path into the registration draft, e.g. `customer.phone`. */
+  id: string;
+  section: CustomerFieldSection;
+  label: string;
+  placeholder: string;
+  hint: string;
+  required: boolean;
+  visible: boolean;
+  order: number;
+  /** Locked fields can be relabelled but never hidden or made optional. */
+  locked: boolean;
+}
+
+export interface CustomerSectionConfig {
+  id: CustomerFieldSection;
+  title: string;
+  description: string;
+  order: number;
+}
+
+export interface StatusBlockConfig {
+  id: string;
+  label: string;
+  visible: boolean;
+  order: number;
+  locked: boolean;
+}
+
+export interface CustomerExperienceConfig {
+  register: {
+    heading: string;
+    subheading: string;
+    sections: CustomerSectionConfig[];
+    fields: CustomerFieldConfig[];
+  };
+  status: {
+    heading: string;
+    subheading: string;
+    searchPlaceholder: string;
+    helpText: string;
+    blocks: StatusBlockConfig[];
+  };
+  updatedAt: string;
+  updatedBy: string;
 }
