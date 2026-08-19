@@ -1,0 +1,228 @@
+@import "tailwindcss";
+
+/*
+ * Aurawatt WMS design tokens.
+ * The product is a light, industrial SaaS surface — we commit to a single
+ * palette rather than following the OS colour scheme so the UI matches the
+ * approved design in every environment.
+ */
+@theme inline {
+  /* Brand — Aurawatt orange. Used sparingly: primary actions, active nav,
+     brand marks, focus rings and progress indicators. */
+  --color-brand-50: #fff5ec;
+  --color-brand-100: #ffe7d3;
+  --color-brand-200: #ffcaa4;
+  --color-brand-300: #ffa76d;
+  --color-brand-400: #f9853d;
+  --color-brand-500: #e2620d;
+  --color-brand-600: #c4530a;
+  --color-brand-700: #9c4108;
+
+  /* Navy — dark sections (hero, certificate) and headings. */
+  --color-navy-950: #070f1c;
+  --color-navy-900: #0b1526;
+  --color-navy-800: #101f38;
+  --color-navy-700: #16294a;
+  --color-navy-600: #1d3560;
+
+  /* Neutrals */
+  --color-ink: #0f1f33;
+  --color-ink-soft: #334155;
+  --color-muted: #64748b;
+  --color-faint: #94a3b8;
+  --color-line: #e5eaf1;
+  --color-line-strong: #d5dde8;
+  --color-surface: #ffffff;
+  --color-canvas: #f4f7fb;
+  --color-canvas-soft: #f8fafc;
+
+  /* Status */
+  --color-success-bg: #e8f7ee;
+  --color-success-line: #c3e9d4;
+  --color-success-fg: #14804a;
+  --color-warning-bg: #fef6e1;
+  --color-warning-line: #f6e3ad;
+  --color-warning-fg: #96650a;
+  --color-danger-bg: #fdedec;
+  --color-danger-line: #f7cfcd;
+  --color-danger-fg: #b42318;
+  --color-info-bg: #eaf2fe;
+  --color-info-line: #cfe0fb;
+  --color-info-fg: #1b5fbf;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-inter), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: var(--font-mono-code), ui-monospace, "SFMono-Regular", monospace;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 31 51 / 0.04),
+    0 1px 3px 0 rgb(15 31 51 / 0.04);
+  --shadow-raised: 0 4px 16px -4px rgb(15 31 51 / 0.1),
+    0 2px 6px -2px rgb(15 31 51 / 0.05);
+  --shadow-overlay: 0 24px 60px -12px rgb(7 15 28 / 0.28);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Consistent, visible focus for keyboard users across every control. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    color: var(--color-ink);
+    letter-spacing: -0.015em;
+  }
+
+  /* Native date inputs get a brand-tinted picker icon. */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.55;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  /* Subtle entrance used on route content and modals — fast, never showy. */
+  @keyframes aw-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes aw-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes aw-scale-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .animate-fade-up {
+    animation: aw-fade-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-fade-in {
+    animation: aw-fade-in 0.2s ease-out both;
+  }
+
+  .animate-scale-in {
+    animation: aw-scale-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      var(--color-canvas) 0%,
+      #eaeff6 50%,
+      var(--color-canvas) 100%
+    );
+    background-size: 200% 100%;
+    animation: aw-shimmer 1.4s ease-in-out infinite;
+  }
+
+  @keyframes aw-shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up,
+    .animate-fade-in,
+    .animate-scale-in,
+    .animate-shimmer {
+      animation: none;
+    }
+  }
+
+  /* Thin scrollbars inside dense admin panes. */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+}
+
+/* Certificate printing — used by the PDF fallback in the certificate service. */
+@media print {
+  /* Browsers drop background colours when printing unless asked not to. The
+     certificate's navy header and status pill are load-bearing, so keep them. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  /* Page chrome around the sheet (nav padding, canvas tint, max widths) only
+     exists for the on-screen view — collapse it so the sheet is full bleed. */
+  body :has(.print-sheet) {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    background: #ffffff !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    break-inside: avoid;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}
