@@ -1,4 +1,5 @@
 import { ServiceError } from "@/lib/services/errors";
+import { getStoredSessionToken } from "@/lib/services/session-token";
 
 const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(
   /\/$/,
@@ -22,6 +23,20 @@ export function buildApiUrl(path: string): string {
   const baseUrl = assertApiBaseUrl();
   if (/^https?:\/\//i.test(path)) return path;
   return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function buildRequestHeaders(init: RequestInit): HeadersInit {
+  const headers = new Headers(init.headers ?? {});
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const sessionToken = getStoredSessionToken();
+  if (sessionToken && !headers.has("x-session-token")) {
+    headers.set("x-session-token", sessionToken);
+  }
+
+  return headers;
 }
 
 async function readErrorMessage(response: Response): Promise<{
@@ -59,10 +74,7 @@ export async function apiRequest<T>(
   const response = await fetch(buildApiUrl(path), {
     credentials: "include",
     ...init,
-    headers: {
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...(init.headers ?? {}),
-    },
+    headers: buildRequestHeaders(init),
   });
 
   if (!response.ok) {
@@ -87,9 +99,7 @@ export async function apiBlob(
   const response = await fetch(buildApiUrl(path), {
     credentials: "include",
     ...init,
-    headers: {
-      ...(init.headers ?? {}),
-    },
+    headers: buildRequestHeaders(init),
   });
 
   if (!response.ok) {

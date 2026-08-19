@@ -1,5 +1,9 @@
 import { apiRequest } from "@/lib/api/client";
 import type { AdminUser } from "@/lib/types";
+import {
+  clearStoredSessionToken,
+  setStoredSessionToken,
+} from "@/lib/services/session-token";
 
 /**
  * Admin session handling.
@@ -81,6 +85,7 @@ export async function login(input: LoginInput): Promise<AdminUser> {
   });
   sessionRequestId += 1;
   cachedSession = response.user;
+  setStoredSessionToken(response.token);
   notify();
   return response.user;
 }
@@ -88,6 +93,7 @@ export async function login(input: LoginInput): Promise<AdminUser> {
 export function logout(): Promise<void> {
   sessionRequestId += 1;
   cachedSession = null;
+  clearStoredSessionToken();
   notify();
   return apiRequest<{ ok: boolean }>("/auth/logout", {
     method: "POST",
