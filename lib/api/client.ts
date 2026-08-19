@@ -1,12 +1,27 @@
 import { ServiceError } from "@/lib/services/errors";
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-  "http://localhost:4000/api";
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(
+  /\/$/,
+  "",
+);
+const developmentApiBaseUrl =
+  process.env.NODE_ENV === "development"
+    ? "http://localhost:4000/api"
+    : undefined;
+
+export const API_BASE_URL = configuredApiBaseUrl ?? developmentApiBaseUrl;
+
+function assertApiBaseUrl(): string {
+  if (API_BASE_URL) return API_BASE_URL;
+  throw new Error(
+    "NEXT_PUBLIC_API_BASE_URL is not configured. Set it to your deployed backend URL, for example https://api.example.com/api.",
+  );
+}
 
 export function buildApiUrl(path: string): string {
+  const baseUrl = assertApiBaseUrl();
   if (/^https?:\/\//i.test(path)) return path;
-  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 async function readErrorMessage(response: Response): Promise<{
