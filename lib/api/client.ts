@@ -12,6 +12,10 @@ const developmentApiBaseUrl =
 
 export const API_BASE_URL = configuredApiBaseUrl ?? developmentApiBaseUrl;
 
+type ApiErrorHandler = (error: ServiceError, path: string) => void;
+
+const apiErrorHandlers = new Set<ApiErrorHandler>();
+
 function assertApiBaseUrl(): string {
   if (API_BASE_URL) return API_BASE_URL;
   throw new Error(
@@ -23,6 +27,21 @@ export function buildApiUrl(path: string): string {
   const baseUrl = assertApiBaseUrl();
   if (/^https?:\/\//i.test(path)) return path;
   return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export function registerApiErrorHandler(handler: ApiErrorHandler): () => void {
+  apiErrorHandlers.add(handler);
+  return () => apiErrorHandlers.delete(handler);
+}
+
+function notifyApiErrorHandlers(error: ServiceError, path: string): void {
+  apiErrorHandlers.forEach((handler) => {
+    try {
+      handler(error, path);
+    } catch {
+      // Keep request handling isolated from listener failures.
+    }
+  });
 }
 
 function buildRequestHeaders(init: RequestInit): HeadersInit {
@@ -79,7 +98,11 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const error = await readErrorMessage(response);
-    throw new ServiceError(error.message, error.code ?? "api_error");
+    const serviceError = new ServiceError(error.message, error.code ?? "api_error");
+    if (response.status === 401) {
+      notifyApiErrorHandlers(serviceError, path);
+    }
+    throw serviceError;
   }
 
   if (response.status === 204) return undefined as T;
@@ -104,7 +127,11 @@ export async function apiBlob(
 
   if (!response.ok) {
     const error = await readErrorMessage(response);
-    throw new ServiceError(error.message, error.code ?? "api_error");
+    const serviceError = new ServiceError(error.message, error.code ?? "api_error");
+    if (response.status === 401) {
+      notifyApiErrorHandlers(serviceError, path);
+    }
+    throw serviceError;
   }
 
   return response.blob();

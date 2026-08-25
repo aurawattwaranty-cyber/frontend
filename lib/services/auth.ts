@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api/client";
+import { apiRequest, registerApiErrorHandler } from "@/lib/api/client";
 import type { AdminUser } from "@/lib/types";
 import {
   clearStoredSessionToken,
@@ -32,6 +32,19 @@ function notify(): void {
   listeners.forEach((listener) => listener());
 }
 
+function setCachedSession(next: AdminUser | null): void {
+  cachedSession = next;
+  notify();
+}
+
+export function invalidateSession(): void {
+  sessionRequestId += 1;
+  sessionLoadPromise = null;
+  cachedSession = null;
+  clearStoredSessionToken();
+  notify();
+}
+
 async function syncSessionFromApi(): Promise<void> {
   if (sessionLoadPromise) return sessionLoadPromise;
   const requestId = ++sessionRequestId;
@@ -39,23 +52,33 @@ async function syncSessionFromApi(): Promise<void> {
     method: "GET",
   })
     .then((response) => {
-      if (requestId === sessionRequestId) {
-        cachedSession = response.user;
+      if (requestId !== sessionRequestId) return;
+      if (response.user) {
+        setCachedSession(response.user);
+        return;
       }
+      invalidateSession();
     })
     .catch(() => {
-      if (requestId === sessionRequestId) {
-        cachedSession = null;
+      if (requestId !== sessionRequestId) return;
+      if (cachedSession === undefined) {
+        invalidateSession();
       }
     })
     .finally(() => {
-      if (requestId === sessionRequestId) {
-        notify();
-      }
+      if (requestId === sessionRequestId) notify();
       sessionLoadPromise = null;
     });
   return sessionLoadPromise;
 }
+
+registerApiErrorHandler((error, path) => {
+  if (error.code !== "session_expired" && error.code !== "unauthorized") {
+    return;
+  }
+  if (path === "/auth/login") return;
+  invalidateSession();
+});
 
 if (typeof window !== "undefined") {
   void syncSessionFromApi();
@@ -63,6 +86,11 @@ if (typeof window !== "undefined") {
 
 export function getSession(): AdminUser | null | undefined {
   return cachedSession;
+}
+
+export async function refreshSession(): Promise<AdminUser | null> {
+  await syncSessionFromApi();
+  return cachedSession ?? null;
 }
 
 export function subscribeToSession(listener: () => void): () => void {
@@ -84,17 +112,13 @@ export async function login(input: LoginInput): Promise<AdminUser> {
     }),
   });
   sessionRequestId += 1;
-  cachedSession = response.user;
+  setCachedSession(response.user);
   setStoredSessionToken(response.token);
-  notify();
   return response.user;
 }
 
 export function logout(): Promise<void> {
-  sessionRequestId += 1;
-  cachedSession = null;
-  clearStoredSessionToken();
-  notify();
+  invalidateSession();
   return apiRequest<{ ok: boolean }>("/auth/logout", {
     method: "POST",
   })

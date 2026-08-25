@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { logout } from "@/lib/services/auth";
+import { logout, refreshSession } from "@/lib/services/auth";
 import { resetDemoData } from "@/lib/services/admin";
 import { useSession } from "@/lib/hooks/useSession";
 import { initialsOf } from "@/lib/utils/format";
@@ -37,6 +37,28 @@ export function AdminShell({ children }: { children: ReactNode }) {
       router.replace(`/admin/login?next=${encodeURIComponent(pathname)}`);
     }
   }, [user, router, pathname]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const verifySession = () => {
+      void refreshSession();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        verifySession();
+      }
+    };
+
+    const interval = window.setInterval(verifySession, 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [user]);
 
   // Closes the drawer on navigation without syncing state in an effect.
   const drawerOpen = drawer.open && drawer.path === pathname;
