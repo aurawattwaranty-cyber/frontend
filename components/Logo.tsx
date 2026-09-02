@@ -1,8 +1,8 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
-import { ShieldCheckIcon } from "@/components/icons";
 
 /**
- * Aurawatt wordmark. The trailing full stop is part of the mark.
+ * Shared Aurawatt logo used across the public experience and certificates.
  */
 export function Logo({
   className,
@@ -14,23 +14,42 @@ export function Logo({
   tone?: "brand" | "light";
 }) {
   const sizes = {
-    sm: { text: "text-[15px]", icon: "text-base" },
-    md: { text: "text-lg", icon: "text-xl" },
-    lg: { text: "text-2xl", icon: "text-2xl" },
+    sm: { icon: 34, title: "text-[12px]", subtitle: "text-[8px]" },
+    md: { icon: 44, title: "text-[17px]", subtitle: "text-[10px]" },
+    lg: { icon: 56, title: "text-[22px]", subtitle: "text-[12px]" },
   }[size];
 
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1.5 font-display font-bold tracking-tight",
-        tone === "brand" ? "text-brand-500" : "text-white",
-        sizes.text,
-        className,
-      )}
+      className={cn("inline-flex shrink-0 items-center gap-2", className)}
     >
-      <ShieldCheckIcon className={cn("shrink-0", sizes.icon)} strokeWidth={2} />
-      <span>
-        Aurawatt<span className="text-brand-400">.</span>
+      <Image
+        src="/aurawatt_logo.webp"
+        alt="Aurawatt"
+        width={sizes.icon}
+        height={sizes.icon}
+        priority={size !== "sm"}
+        className="shrink-0 object-contain"
+      />
+      <span className="flex flex-col leading-none">
+        <span
+          className={cn(
+            "font-display font-bold tracking-[0.12em]",
+            sizes.title,
+            tone === "brand" ? "text-navy-900" : "text-white",
+          )}
+        >
+          AURAWATT
+        </span>
+        <span
+          className={cn(
+            "mt-1 font-medium tracking-wide",
+            sizes.subtitle,
+            tone === "brand" ? "text-navy-700" : "text-white/70",
+          )}
+        >
+          Your Power Partner
+        </span>
       </span>
     </span>
   );

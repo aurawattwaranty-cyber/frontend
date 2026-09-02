@@ -27,8 +27,7 @@ export function PublicFooter() {
           </ul>
         </nav>
         <p className="text-xs text-faint">
-          © {new Date().getFullYear()} Aurawatt Energy Systems. All rights
-          reserved.
+          © {new Date().getFullYear()} Aurawatt. All rights reserved.
         </p>
       </div>
     </footer>

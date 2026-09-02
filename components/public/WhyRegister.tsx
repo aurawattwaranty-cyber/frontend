@@ -10,23 +10,23 @@ import { SectionHeading } from "@/components/public/SectionHeading";
 const BENEFITS: { icon: ReactNode; title: string; body: string }[] = [
   {
     icon: <ShieldCheckIcon />,
-    title: "Full-term coverage",
-    body: "Registration activates the complete warranty term for your inverter — parts, labour and replacement — counted from the day it was installed.",
+    title: "Warranty Coverage",
+    body: "Added assurance for your Aurawatt inverter.",
   },
   {
     icon: <FileTextIcon />,
-    title: "A certificate on record",
-    body: "Once approved you get a downloadable warranty certificate carrying your serial number, model and coverage window.",
+    title: "Product on Record",
+    body: "Keep your product details registered with Aurawatt.",
   },
   {
     icon: <QrIcon />,
-    title: "Verifiable anywhere",
-    body: "Every certificate carries a public verification link and QR code, so a service engineer can confirm coverage on the spot.",
+    title: "Simple & Convenient",
+    body: "A quick registration process for your peace of mind.",
   },
   {
     icon: <ClockIcon />,
-    title: "Faster service claims",
-    body: "With your installation already on file, a support request skips the paperwork and goes straight to the engineering queue.",
+    title: "Support When Needed",
+    body: "Aurawatt support for your product and warranty needs.",
   },
 ];
 
@@ -37,7 +37,7 @@ export function WhyRegister() {
         <SectionHeading
           eyebrow="Why it matters"
           title="Registration is what turns a purchase into a warranty."
-          description="An unregistered inverter is still a good inverter. It just isn't a covered one. Registering takes a few minutes and stays on record for the life of the unit."
+          description="An unregistered inverter is still a quality Aurawatt inverter. Registration simply helps activate your warranty coverage and keeps your product details securely on record. It only takes a few minutes to complete."
         />
 
         <ul className="mt-12 grid gap-4 sm:grid-cols-2">

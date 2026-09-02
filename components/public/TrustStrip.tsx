@@ -1,8 +1,8 @@
 const STATS = [
-  { value: "Up to 10 yrs", label: "Warranty coverage" },
-  { value: "3 steps", label: "To register online" },
-  { value: "48 hrs", label: "Typical review time" },
-  { value: "Pan-India", label: "Certified installer network" },
+  { value: "Easy Registration", label: "Register your Aurawatt inverter online" },
+  { value: "Warranty Activation", label: "Activate your product warranty with ease" },
+  { value: "Reliable Protection", label: "Added assurance for your power system" },
+  { value: "Aurawatt Support", label: "Assistance when you need it" },
 ] as const;
 
 /**

@@ -6,7 +6,7 @@ const STEPS = [
   {
     number: "01",
     icon: <BarcodeIcon />,
-    title: "Verify Serial",
+    title: "Verify Serial Number",
     body: "Enter your Aurawatt hybrid inverter serial number. Our system instantly verifies the model and capacity to begin registration.",
   },
   {
@@ -19,7 +19,7 @@ const STEPS = [
     number: "03",
     icon: <CameraIcon />,
     title: "Photo Upload",
-    body: "Upload required photos of the installation, wiring and site. Our engineers review these to ensure compliance and safety.",
+    body: "Upload required photos of the installation, wiring and site parameters. Our engineers review these to ensure compliance and safety.",
   },
 ] as const;
 

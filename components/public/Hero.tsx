@@ -19,17 +19,16 @@ export function Hero() {
           </span>
 
           <h1 className="mt-6 text-[2.25rem] leading-[1.08] font-semibold tracking-tight text-white sm:text-5xl lg:text-[3.5rem]">
-            Protect your energy.
+            Register Your Aurawatt.
             <br />
-            <span className="text-brand-400">Secure your future.</span>
+            <span className="text-brand-400">Power with Confidence.</span>
           </h1>
 
           <div className="mt-6 h-px w-16 bg-brand-500" />
 
           <p className="mt-6 text-[15px] leading-relaxed text-white/70 sm:text-base">
-            Register your Aurawatt hybrid inverter to activate your
-            comprehensive warranty. Industrial-grade protection for your
-            industrial-grade equipment.
+            Activate your comprehensive warranty and keep your power
+            protected.
           </p>
 
           <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
@@ -65,7 +64,7 @@ export function Hero() {
           />
           <div className="relative aspect-[9/10] overflow-hidden rounded-2xl border border-white/10 shadow-[0_40px_80px_-40px_rgba(0,0,0,0.9)]">
             <Image
-              src="/hero.png"
+              src="/updatedhero.png"
               alt="Aurawatt hybrid inverter and battery protected by a warranty shield"
               fill
               priority

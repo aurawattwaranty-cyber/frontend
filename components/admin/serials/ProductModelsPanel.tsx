@@ -30,6 +30,7 @@ import { PackageIcon, PencilIcon, PlusIcon } from "@/components/icons";
 const TYPE_OPTIONS = [
   { value: "inverter", label: "Hybrid Inverter" },
   { value: "battery", label: "Battery" },
+  { value: "combo", label: "Combo" },
 ];
 
 interface ModelForm {
@@ -273,7 +274,7 @@ export function ProductModelsPanel() {
                 }))
               }
               error={errors.capacityKw}
-              hint={form.productType === "battery" ? "In kWh" : "In kW"}
+            hint={form.productType === "battery" ? "In kWh" : "In kW"}
               required
             />
             <Select

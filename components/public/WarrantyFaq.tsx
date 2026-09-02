@@ -3,28 +3,28 @@ import { SectionHeading } from "@/components/public/SectionHeading";
 
 const FAQS = [
   {
-    q: "Where do I find my serial number?",
-    a: "It is printed on a label on the side of the inverter, and repeated on the box and the delivery invoice. Aurawatt serials start with AW-HI- followed by the capacity, for example AW-HI-5KW-24001.",
+    q: "Where can I find my serial number?",
+    a: "Your inverter’s serial number can be found on the product label. Keep it handy while registering your product.",
   },
   {
-    q: "How long do I have to register?",
-    a: "Register as soon as the installation is complete. Coverage is calculated from the installation date you enter, not from the date you register, so a late registration does not extend your term.",
+    q: "What information is required for registration?",
+    a: "You may need your product and installation details to complete the warranty registration.",
   },
   {
-    q: "What photos do I need to upload?",
-    a: "Six required photos: the inverter front, the serial number label, the battery connection, the solar DC input, the AC grid connection and a wide shot of the site. Earthing and installer photos are optional but speed up review.",
+    q: "Do I need to upload installation photos?",
+    a: "If installation photos are requested during registration, please keep clear and relevant photos ready.",
   },
   {
-    q: "How long does approval take?",
-    a: "Most registrations are reviewed within two working days. If something in the evidence is unclear, we ask for a correction rather than rejecting it, and you can re-upload from the status page.",
+    q: "How do I know if my registration is complete?",
+    a: "Once your registration is submitted, you can check the status through the warranty management system.",
   },
   {
-    q: "What if my registration needs a correction?",
-    a: "Look up your warranty ID on Check Status. The page lists exactly what needs re-uploading, and resubmitting puts you straight back into the review queue.",
+    q: "What if I enter incorrect information?",
+    a: "If any registration details need to be corrected, contact Aurawatt support for assistance.",
   },
   {
-    q: "Can someone else verify my warranty?",
-    a: "Yes. Every approved certificate carries a public verification link and QR code that shows the coverage status without exposing your personal details.",
+    q: "How can I check my warranty details?",
+    a: "Use the warranty management system to view your registered product and available warranty information.",
   },
 ] as const;
 

@@ -35,7 +35,7 @@ export function WarrantyCertificate({
             Warranty Certificate
           </p>
           <p className="mt-1 text-[13px] text-white/60">
-            Aurawatt Energy Systems · Hybrid Inverter Warranty
+            Aurawatt · Hybrid Inverter Warranty
           </p>
         </div>
         <div className="text-right">
@@ -147,7 +147,7 @@ export function WarrantyCertificate({
         </footer>
 
         <p className="mt-5 text-[11px] leading-relaxed text-faint">
-          This certificate is issued by Aurawatt Energy Systems and is valid only
+          This certificate is issued by Aurawatt and is valid only
           for the serial number stated above. Coverage is subject to the Aurawatt
           hybrid inverter warranty terms, including correct installation by a
           certified partner and operation within the published specifications.
