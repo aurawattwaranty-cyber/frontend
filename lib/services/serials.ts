@@ -3,7 +3,6 @@ import { notifyApiRevision } from "@/lib/api/revision";
 import type {
   BulkImportPreview,
   BulkImportResult,
-  BulkImportRow,
   Paginated,
   ProductType,
   SerialNumber,
@@ -91,9 +90,6 @@ export const BULK_IMPORT_COLUMNS = [
 
 export const BULK_IMPORT_TEMPLATE = [
   BULK_IMPORT_COLUMNS.join(","),
-  "AW-HI-5KW-24101,AuraWatt HybridPro 5kW,5,inverter",
-  "AW-HI-10KW-24101,AuraWatt HybridMax 10kW,10,inverter",
-  "AW-BT-51-24101,AuraWatt PowerCell 5.1kWh,5.1,battery",
 ].join("\n");
 
 /** Reads a binary file as base64 without pulling the whole string onto the stack. */
@@ -110,18 +106,20 @@ async function toBase64(file: File): Promise<string> {
 /**
  * Validates an upload before anything is written.
  *
- * Spreadsheets are sent as base64 and opened by the API; CSV/TSV exports are
- * sent as text. Both come back as the same preview shape.
+ * Binary documents are sent as base64 and opened by the API; CSV/TSV exports
+ * are sent as text. Both come back as the same preview shape.
  */
 export async function parseBulkImportFile(
   file: File,
+  context?: { seriesId?: string; modelId?: string },
 ): Promise<BulkImportPreview> {
   const name = file.name.toLowerCase();
   const isWorkbook = /\.(xlsx|xls)$/.test(name);
+  const isDocument = /\.(pdf|docx|doc)$/.test(name);
 
-  if (!isWorkbook && !/\.(csv|tsv|txt)$/.test(name)) {
+  if (!isWorkbook && !isDocument && !/\.(csv|tsv|txt)$/.test(name)) {
     throw new ServiceError(
-      "Unsupported file type. Upload a .csv, .tsv, .txt, .xlsx or .xls file.",
+      "Unsupported file type. Upload a .csv, .tsv, .txt, .xlsx, .xls, .pdf, .doc or .docx file.",
       "unsupported_file",
     );
   }
@@ -133,14 +131,15 @@ export async function parseBulkImportFile(
     );
   }
 
-  const content = isWorkbook ? await toBase64(file) : await file.text();
+  const content = isWorkbook || isDocument ? await toBase64(file) : await file.text();
 
   return apiRequest<BulkImportPreview>("/serials/bulk/preview", {
     method: "POST",
     body: JSON.stringify({
       fileName: file.name,
       content,
-      encoding: isWorkbook ? "base64" : "text",
+      encoding: isWorkbook || isDocument ? "base64" : "text",
+      ...context,
     }),
   });
 }

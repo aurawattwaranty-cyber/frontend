@@ -1,24 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type {
-  PhotoRequirement,
-  ProductModel,
-  WarrantyRegistration,
-} from "@/lib/types";
+import type { PhotoRequirement, WarrantyRegistration } from "@/lib/types";
 import {
   approveWarranty,
   rejectWarranty,
   requestCorrection,
 } from "@/lib/services/warranties";
-import { getProductModels } from "@/lib/services/products";
 import { getPhotoRequirements } from "@/lib/services/photo-requirements";
 import { useAsync, useMutation } from "@/lib/hooks/useAsync";
 import { calculateWarrantyPeriod, toIsoDate } from "@/lib/warranty/dates";
 import { formatDate } from "@/lib/utils/format";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { Checkbox, Input, Select, Textarea } from "@/components/ui/Field";
+import { Checkbox, Input, Textarea } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Feedback";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -40,16 +35,12 @@ export function ReviewActions({
   const toast = useToast();
   const [dialog, setDialog] = useState<OpenDialog>(null);
 
-  const models = useAsync<ProductModel[]>(
-    () => getProductModels({ activeOnly: true }),
-    [],
-  );
   const requirements = useAsync<PhotoRequirement[]>(
     () => getPhotoRequirements(),
     [],
   );
 
-  const [modelId, setModelId] = useState(registration.modelId);
+  const [modelName, setModelName] = useState(registration.modelName);
   const [startDate, setStartDate] = useState(
     registration.installation.installationDate,
   );
@@ -65,14 +56,9 @@ export function ReviewActions({
   const correction = useMutation(requestCorrection);
   const reject = useMutation(rejectWarranty);
 
-  const selectedModel = useMemo(
-    () => (models.data ?? []).find((model) => model.id === modelId),
-    [models.data, modelId],
-  );
-
   const effectiveMonths = durationMonths
     ? Number(durationMonths)
-    : (selectedModel?.warrantyMonths ?? 60);
+    : 60;
 
   const preview = useMemo(
     () =>
@@ -80,15 +66,6 @@ export function ReviewActions({
         ? calculateWarrantyPeriod(startDate, effectiveMonths)
         : null,
     [startDate, effectiveMonths],
-  );
-
-  const modelOptions = useMemo(
-    () =>
-      (models.data ?? []).map((model) => ({
-        value: model.id,
-        label: `${model.name} · ${model.warrantyMonths} months`,
-      })),
-    [models.data],
   );
 
   function closeDialog() {
@@ -100,12 +77,12 @@ export function ReviewActions({
   }
 
   async function handleApprove() {
-    if (!modelId) {
-      setFieldError("Select the product model shown on the side label.");
+    if (!modelName.trim()) {
+      setFieldError("Enter the model number shown on the side label.");
       return;
     }
     const updated = await approve.run(registration.id, {
-      modelId,
+      modelName: modelName.trim(),
       startDate,
       durationMonths: durationMonths ? Number(durationMonths) : undefined,
       note: approveNote.trim() || undefined,
@@ -239,18 +216,16 @@ export function ReviewActions({
         <div className="flex flex-col gap-4">
           {approve.error ? <Alert tone="danger">{approve.error}</Alert> : null}
 
-          <Select
-            label="Product model"
-            hint="Correct this if the side label differs from what the customer selected."
-            value={modelId}
+          <Input
+            label="Model number"
+            hint="Enter the exact model number printed on the product side label."
+            value={modelName}
             onChange={(event) => {
-              setModelId(event.target.value);
+              setModelName(event.target.value);
               setFieldError(undefined);
             }}
-            options={modelOptions}
-            placeholder={models.loading ? "Loading models…" : "Select a model"}
+            placeholder="e.g. AW-HI-5KW"
             error={fieldError}
-            disabled={models.loading}
             required
           />
 
@@ -270,8 +245,8 @@ export function ReviewActions({
               max={360}
               value={durationMonths}
               onChange={(event) => setDurationMonths(event.target.value)}
-              placeholder={String(selectedModel?.warrantyMonths ?? 60)}
-              hint="Leave blank to use the model's standard term."
+              placeholder="60"
+              hint="Leave blank to use the standard 60-month term."
             />
           </div>
 

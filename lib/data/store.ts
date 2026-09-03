@@ -1,10 +1,10 @@
 import { createSeedDatabase, DB_VERSION, type Database } from "./seed";
 
 /**
- * Browser-persisted demo datastore.
+ * Browser-persisted datastore.
  *
  * Everything the services read and write goes through here, so swapping the
- * services over to the Node/Express API is a change to `lib/services/*` only —
+ * services over to the Node/Express API is a change to `lib/services/*` only -
  * no page or component touches this module directly.
  */
 
@@ -21,8 +21,8 @@ function canPersist(): boolean {
 
 function load(): Database {
   if (typeof window === "undefined") {
-    // Server render: hand back a fresh seed. Client components re-read after
-    // mount, so persisted demo state always wins in the browser.
+    // Server render: hand back a fresh empty store. Client components re-read
+    // after mount, so persisted browser state always wins in the browser.
     return createSeedDatabase();
   }
 
@@ -35,12 +35,12 @@ function load(): Database {
       }
     }
   } catch {
-    // Corrupt or unreadable storage — fall through to a clean seed.
+    // Corrupt or unreadable storage - fall through to a clean empty store.
   }
 
-  const seeded = createSeedDatabase();
-  persist(seeded);
-  return seeded;
+  const fresh = createSeedDatabase();
+  persist(fresh);
+  return fresh;
 }
 
 function persist(db: Database): void {
@@ -80,7 +80,7 @@ export function getRevision(): number {
   return revision;
 }
 
-/** Restores the demo dataset. Exposed through the admin shell. */
+/** Clears the browser datastore. Exposed through the admin shell. */
 export function resetDatabase(): void {
   cache = createSeedDatabase();
   revision += 1;

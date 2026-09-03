@@ -54,10 +54,13 @@ export function ReviewStep({
         <CardBody>
           <dl className="grid gap-4 sm:grid-cols-3">
             <DetailRow label="Serial Number" value={serial.serial} monospace />
-            <DetailRow label="Model" value={serial.modelName} />
+            <DetailRow
+              label="Model"
+              value={serial.modelName || "To be assigned by admin"}
+            />
             <DetailRow
               label="Capacity"
-              value={formatCapacity(serial.capacityKw, serial.productType)}
+              value={serial.capacityKw ? formatCapacity(serial.capacityKw, serial.productType) : "To be assigned by admin"}
             />
           </dl>
         </CardBody>

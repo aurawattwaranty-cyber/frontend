@@ -19,6 +19,13 @@ export interface LoginInput {
   remember: boolean;
 }
 
+export interface CreateAdminInput {
+  name: string;
+  email: string;
+  password: string;
+  role: "admin" | "verifier";
+}
+
 /**
  * Cached snapshot so `useSyncExternalStore` sees a stable reference between
  * renders. `undefined` means "session not checked yet".
@@ -124,4 +131,35 @@ export function logout(): Promise<void> {
   })
     .catch(() => undefined)
     .then(() => undefined);
+}
+
+export async function getAdminUsers(): Promise<AdminUser[]> {
+  const response = await apiRequest<{ items: AdminUser[] }>("/auth/users");
+  return response.items;
+}
+
+export async function requestAdminAccess(
+  input: CreateAdminInput,
+): Promise<AdminUser> {
+  const response = await apiRequest<{ item: AdminUser }>("/auth/access-requests", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return response.item;
+}
+
+export async function createAdminUser(input: CreateAdminInput): Promise<AdminUser> {
+  const response = await apiRequest<{ item: AdminUser }>("/auth/users", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return response.item;
+}
+
+export async function authorizeAdminUser(id: string, active: boolean): Promise<AdminUser> {
+  const response = await apiRequest<{ item: AdminUser }>(
+    `/auth/users/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify({ active }) },
+  );
+  return response.item;
 }

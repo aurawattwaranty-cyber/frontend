@@ -83,7 +83,11 @@ export function CustomerFieldsView() {
 
   // The editor works on a local copy so nothing is written until Save.
   useEffect(() => {
-    if (remote.data) setDraft(remote.data);
+    if (!remote.data) return;
+    const timer = window.setTimeout(() => {
+      setDraft(structuredClone(remote.data));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [remote.data]);
 
   const dirty = useMemo(
@@ -237,7 +241,7 @@ export function CustomerFieldsView() {
       setDraft(result);
       remote.refresh();
       setResetOpen(false);
-      toast.success("Restored defaults", "The customer view is back to factory copy.");
+      toast.success("Configuration cleared", "The customer view is back to a blank slate.");
     }
   }
 
@@ -257,7 +261,7 @@ export function CustomerFieldsView() {
               onClick={() => setResetOpen(true)}
               icon={<RefreshIcon className="text-base" />}
             >
-              Restore defaults
+              Clear configuration
             </Button>
             <Button
               onClick={handleSave}
@@ -554,8 +558,8 @@ export function CustomerFieldsView() {
       <Modal
         open={resetOpen}
         onClose={() => setResetOpen(false)}
-        title="Restore default customer view?"
-        description="Every label, placeholder, help text, visibility and order returns to the copy Aurawatt shipped. This cannot be undone."
+        title="Clear customer configuration?"
+        description="Every label, placeholder, help text, visibility and order returns to a blank configuration. This cannot be undone."
         footer={
           <>
             <Button variant="secondary" onClick={() => setResetOpen(false)}>
@@ -565,15 +569,15 @@ export function CustomerFieldsView() {
               variant="danger"
               onClick={handleReset}
               loading={reset.pending}
-              loadingText="Restoring…"
+              loadingText="Clearing…"
             >
-              Restore defaults
+              Clear configuration
             </Button>
           </>
         }
       >
         {reset.error ? (
-          <Alert tone="danger" title="Couldn't restore">
+          <Alert tone="danger" title="Couldn't clear">
             {reset.error}
           </Alert>
         ) : null}

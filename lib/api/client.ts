@@ -58,6 +58,21 @@ function buildRequestHeaders(init: RequestInit): HeadersInit {
   return headers;
 }
 
+async function fetchApi(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(buildApiUrl(path), {
+      credentials: "include",
+      ...init,
+      headers: buildRequestHeaders(init),
+    });
+  } catch {
+    throw new ServiceError(
+      "Unable to connect to the warranty server. Please start the backend and try again.",
+      "api_unavailable",
+    );
+  }
+}
+
 async function readErrorMessage(response: Response): Promise<{
   message: string;
   code?: string;
@@ -90,11 +105,7 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(buildApiUrl(path), {
-    credentials: "include",
-    ...init,
-    headers: buildRequestHeaders(init),
-  });
+  const response = await fetchApi(path, init);
 
   if (!response.ok) {
     const error = await readErrorMessage(response);
@@ -119,11 +130,7 @@ export async function apiBlob(
   path: string,
   init: RequestInit = {},
 ): Promise<Blob> {
-  const response = await fetch(buildApiUrl(path), {
-    credentials: "include",
-    ...init,
-    headers: buildRequestHeaders(init),
-  });
+  const response = await fetchApi(path, init);
 
   if (!response.ok) {
     const error = await readErrorMessage(response);

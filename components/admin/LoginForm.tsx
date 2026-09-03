@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { login } from "@/lib/services/auth";
 import { useMutation } from "@/lib/hooks/useAsync";
@@ -107,6 +108,16 @@ export function LoginForm() {
             Login
           </Button>
         </form>
+
+        <p className="mt-4 text-center text-[13px] text-muted">
+          Need admin access?{" "}
+          <Link
+            href="/admin/request-access"
+            className="font-semibold text-brand-600 hover:underline"
+          >
+            Request an account
+          </Link>
+        </p>
 
       </CardBody>
     </Card>

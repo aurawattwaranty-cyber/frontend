@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { logout, refreshSession } from "@/lib/services/auth";
-import { resetDemoData } from "@/lib/services/admin";
+import { resetDatabase } from "@/lib/services/admin";
 import { useSession } from "@/lib/hooks/useSession";
 import { initialsOf } from "@/lib/utils/format";
 import { Logo } from "@/components/Logo";
@@ -154,7 +154,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               icon={<RefreshIcon />}
               className="text-faint"
             >
-              Reset demo data
+              Clear data
             </Button>
           </div>
         </main>
@@ -164,29 +164,29 @@ export function AdminShell({ children }: { children: ReactNode }) {
         open={resetOpen}
         onClose={() => setResetOpen(false)}
         onConfirm={() => {
-          void resetDemoData()
+          void resetDatabase()
             .then(() => {
               setResetOpen(false);
               toast.success(
-                "Demo data restored",
-                "Registrations, serials and photo requirements are back to their starting state.",
+                "Data cleared",
+                "Registrations, serials, photo requirements and models were cleared.",
               );
             })
             .catch(() => {
               toast.error(
                 "Reset failed",
-                "The backend could not restore the demo data right now.",
+                "The backend could not clear the data right now.",
               );
             });
         }}
-        title="Reset demo data?"
-        description="Every registration, serial number and photo requirement returns to the seeded state."
-        confirmLabel="Reset data"
+        title="Clear all data?"
+        description="This removes registrations, serial numbers, product models and photo requirements from the current workspace."
+        confirmLabel="Clear data"
         tone="danger"
       >
         <p className="text-[13px] leading-relaxed text-muted">
-          This affects the preview dataset stored in this browser only. Anything
-          you submitted or approved during this session will be discarded.
+          This affects the data stored in this workspace only. Anything you
+          submitted or approved during this session will be discarded.
         </p>
       </ConfirmDialog>
     </div>

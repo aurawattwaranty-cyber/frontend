@@ -483,10 +483,13 @@ export function DetailsStep({
         <CardBody className="flex flex-col gap-4">
           <div className="grid gap-4 rounded-lg border border-line bg-canvas-soft p-4 sm:grid-cols-3">
             <ReadOnlyField label="Product Type" value="Hybrid Inverter" />
-            <ReadOnlyField label="Model" value={serial.modelName} />
+            <ReadOnlyField
+              label="Model"
+              value={serial.modelName || "To be assigned by admin"}
+            />
             <ReadOnlyField
               label="Capacity"
-              value={formatCapacity(serial.capacityKw, serial.productType)}
+              value={serial.capacityKw ? formatCapacity(serial.capacityKw, serial.productType) : "To be assigned by admin"}
             />
           </div>
 

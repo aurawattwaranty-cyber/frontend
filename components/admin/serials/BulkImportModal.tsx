@@ -37,9 +37,13 @@ type Stage = "select" | "preview" | "done";
 export function BulkImportModal({
   onClose,
   onImported,
+  seriesId,
+  modelId,
 }: {
   onClose: () => void;
   onImported: () => void;
+  seriesId?: string;
+  modelId?: string;
 }) {
   const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,7 +62,7 @@ export function BulkImportModal({
     setParseError(null);
     setParsing(true);
     try {
-      const parsed = await parseBulkImportFile(file);
+      const parsed = await parseBulkImportFile(file, { seriesId, modelId });
       setPreview(parsed);
       setStage("preview");
     } catch (cause) {
@@ -108,7 +112,7 @@ export function BulkImportModal({
       open
       onClose={onClose}
       title="Bulk import serial numbers"
-      description="Upload a sheet of serial numbers to add them to inventory in one go."
+      description="Upload serial lists to this series. The product model will be assigned when the warranty is activated."
       size="lg"
       busy={importRows.pending}
       footer={
@@ -171,7 +175,7 @@ export function BulkImportModal({
             >
               Select file
             </Button>
-            <p className="text-xs text-faint">CSV, XLSX or XLS · up to 2 MB</p>
+            <p className="text-xs text-faint">CSV, XLSX, XLS, PDF, DOC or DOCX · up to 2 MB</p>
           </div>
 
           {parseError ? (
@@ -183,11 +187,15 @@ export function BulkImportModal({
           <div className="rounded-lg border border-line bg-canvas-soft px-4 py-3">
             <p className="text-[13px] font-medium text-ink">Expected format</p>
             <p className="mt-1 text-[12px] leading-relaxed text-muted">
-              The first row must be a header row with these columns:
+              {seriesId
+                ? "Upload one serial number per line, or include a serial / serial_number column."
+                : "The first row must be a header row with these columns:"}
             </p>
-            <p className="mt-1.5 font-mono text-[12px] break-words text-ink-soft">
-              {BULK_IMPORT_COLUMNS.join(", ")}
-            </p>
+            {!seriesId ? (
+              <p className="mt-1.5 font-mono text-[12px] break-words text-ink-soft">
+                {BULK_IMPORT_COLUMNS.join(", ")}
+              </p>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
@@ -202,7 +210,7 @@ export function BulkImportModal({
           <input
             ref={inputRef}
             type="file"
-            accept=".csv,.tsv,.txt,.xlsx,.xls"
+            accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf,.doc,.docx"
             className="sr-only"
             aria-label="Select a serial number file"
             onChange={(event) => void handleFile(event.target.files?.[0])}

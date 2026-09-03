@@ -27,8 +27,27 @@ export interface SerialNumber {
   productType: ProductType;
   status: SerialStatus;
   addedAt: string;
+  seriesId?: string;
+  seriesName?: string;
+  importFileId?: string;
   /** Warranty that consumed this serial, when registered. */
   warrantyId?: string;
+}
+
+export interface ProductSeries {
+  id: string;
+  name: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface SerialImportFile {
+  id: string;
+  seriesId: string;
+  fileName: string;
+  uploadedAt: string;
+  serialCount: number;
+  importedCount: number;
 }
 
 export type WarrantyStatus =
@@ -159,6 +178,8 @@ export interface AdminUser {
   name: string;
   email: string;
   role: AdminRole;
+  active?: boolean;
+  createdAt?: string;
 }
 
 export interface DashboardStats {
@@ -203,6 +224,8 @@ export interface BulkImportRow {
 
 export interface BulkImportPreview {
   fileName: string;
+  seriesId?: string;
+  modelId?: string;
   rows: BulkImportRow[];
   validCount: number;
   invalidCount: number;

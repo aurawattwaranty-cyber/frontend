@@ -2,37 +2,18 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { ProductModel, SerialNumber } from "@/lib/types";
-import { getProductModels } from "@/lib/services/products";
+import type { SerialNumber } from "@/lib/types";
 import { validateSerial } from "@/lib/services/serials";
 import { toUserMessage } from "@/lib/services/errors";
-import { formatCapacity } from "@/lib/utils/format";
-import { useAsync } from "@/lib/hooks/useAsync";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
-import { Input, Select } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Feedback";
 import { ChevronRightIcon } from "@/components/icons";
 
 type SerialIssue =
   | { kind: "invalid"; message: string }
   | { kind: "registered"; message: string; warrantyId?: string };
-
-function buildProvisionalSerial(
-  serial: string,
-  model: ProductModel,
-): SerialNumber {
-  return {
-    id: `tmp-${Date.now().toString(36)}`,
-    serial: serial.trim().toUpperCase().replace(/\s+/g, ""),
-    modelId: model.id,
-    modelName: model.name,
-    capacityKw: model.capacityKw,
-    productType: model.productType,
-    status: "available",
-    addedAt: new Date().toISOString(),
-  };
-}
 
 export function SerialStep({
   initialSerial,
@@ -45,18 +26,6 @@ export function SerialStep({
   const [fieldError, setFieldError] = useState<string | undefined>();
   const [issue, setIssue] = useState<SerialIssue | null>(null);
   const [checking, setChecking] = useState(false);
-  const [newModelId, setNewModelId] = useState("");
-
-  const inverterModels = useAsync<ProductModel[]>(
-    () => getProductModels({ activeOnly: true, productType: "inverter" }),
-    [],
-  );
-
-  const newSerialModelOptions =
-    inverterModels.data?.map((model) => ({
-      value: model.id,
-      label: `${model.name} (${formatCapacity(model.capacityKw, model.productType)})`,
-    })) ?? [];
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -74,15 +43,6 @@ export function SerialStep({
       if (result.status === "available" && result.serial) {
         onVerified(result.serial);
         return;
-      }
-      if (result.status === "unknown") {
-        const selectedModel = inverterModels.data?.find(
-          (model) => model.id === newModelId,
-        );
-        if (selectedModel) {
-          onVerified(buildProvisionalSerial(value, selectedModel));
-          return;
-        }
       }
       setIssue(
         result.status === "registered"
@@ -117,11 +77,11 @@ export function SerialStep({
             label="Serial Number"
             name="serial"
             value={value}
-            onChange={(event) => {
-              setValue(event.target.value.toUpperCase());
-              if (fieldError) setFieldError(undefined);
-              if (issue) setIssue(null);
-            }}
+          onChange={(event) => {
+            setValue(event.target.value.toUpperCase());
+            if (fieldError) setFieldError(undefined);
+            if (issue) setIssue(null);
+          }}
             placeholder="E.G. AW-8K-23X991"
             error={fieldError}
             monospace
@@ -131,23 +91,6 @@ export function SerialStep({
             autoFocus
             required
           />
-
-          {issue?.kind === "invalid" ? (
-            <Select
-              label="New Serial Product Model"
-              value={newModelId}
-              onChange={(event) => setNewModelId(event.target.value)}
-              options={newSerialModelOptions}
-              placeholder={
-                inverterModels.loading
-                  ? "Loading models…"
-                  : "Select the inverter model for this new serial"
-              }
-              hint="Only choose this if the serial is new and not in inventory yet."
-              className="mt-4"
-              disabled={inverterModels.loading}
-            />
-          ) : null}
 
           {issue ? (
             <Alert
@@ -173,9 +116,7 @@ export function SerialStep({
                 ) : null
               }
               >
-              {issue.kind === "invalid" && newModelId
-                ? `${issue.message} You can continue with the selected model.`
-                : issue.message}
+              {issue.message}
             </Alert>
           ) : null}
 
@@ -217,7 +158,7 @@ export function VerifiedSerialSummary({
           {serial.serial}
         </p>
         <p className="mt-0.5 text-[13px] text-ink-soft">
-          {serial.modelName} · {formatCapacity(serial.capacityKw, serial.productType)}
+          {serial.modelName || "Model will be assigned during warranty activation"}
         </p>
       </div>
       <Button variant="ghost" size="sm" onClick={onChange}>

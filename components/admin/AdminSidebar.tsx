@@ -14,6 +14,7 @@ import {
   DashboardIcon,
   FileTextIcon,
   SlidersIcon,
+  ShieldCheckIcon,
 } from "@/components/icons";
 
 interface NavItem {
@@ -29,7 +30,11 @@ interface NavItem {
 export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: <DashboardIcon />, exact: true },
   { href: "/admin/warranties", label: "Warranties", icon: <FileTextIcon /> },
-  { href: "/admin/serials", label: "Serial Numbers", icon: <BarcodeIcon /> },
+  {
+    href: "/admin/serials",
+    label: "Series and Serial No. Uploader",
+    icon: <BarcodeIcon />,
+  },
   {
     href: "/admin/photo-requirements",
     label: "Photo Requirements",
@@ -40,6 +45,12 @@ export const ADMIN_NAV: NavItem[] = [
     label: "Customer Fields",
     icon: <SlidersIcon />,
     roles: ["superadmin"],
+  },
+  {
+    href: "/admin/accounts",
+    label: "Admin Accounts",
+    icon: <ShieldCheckIcon />,
+    roles: ["admin", "superadmin"],
   },
 ];
 

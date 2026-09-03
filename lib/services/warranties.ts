@@ -7,7 +7,6 @@ import type {
   WarrantyEvent,
   WarrantyEventType,
   WarrantyRegistration,
-  WarrantyStatus,
   WarrantyQuery,
 } from "@/lib/types";
 
@@ -121,8 +120,8 @@ export async function getRecentRegistrations(
 }
 
 export interface ApproveWarrantyInput {
-  /** Model confirmed by the admin during verification. */
-  modelId: string;
+  /** Free-text model number confirmed by the admin during verification. */
+  modelName: string;
   /** Coverage start — defaults to the installation date. */
   startDate?: string;
   /** Overrides the model's standard term when set. */

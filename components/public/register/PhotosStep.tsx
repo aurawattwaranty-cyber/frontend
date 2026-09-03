@@ -8,7 +8,31 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Alert, EmptyState, Skeleton } from "@/components/ui/Feedback";
 import { FileUploader } from "@/components/public/FileUploader";
-import { ArrowLeftIcon, CameraIcon, ChevronRightIcon } from "@/components/icons";
+import { ArrowLeftIcon, ChevronRightIcon } from "@/components/icons";
+
+const DEFAULT_PHOTO_REQUIREMENTS: PhotoRequirement[] = [
+  {
+    id: "default-installation-overview",
+    label: "Installation overview",
+    instructions: "Upload a clear photo showing the installed Aurawatt equipment and its surroundings.",
+    required: true,
+    order: 1,
+  },
+  {
+    id: "default-product-label",
+    label: "Product label",
+    instructions: "Upload a clear photo of the product label showing the serial number.",
+    required: true,
+    order: 2,
+  },
+  {
+    id: "default-wiring-panel",
+    label: "Wiring and panel",
+    instructions: "Upload a clear photo of the wiring, connections and nearby electrical panel.",
+    required: true,
+    order: 3,
+  },
+];
 
 export function PhotosStep({
   photos,
@@ -27,7 +51,13 @@ export function PhotosStep({
     [],
   );
 
-  const list = useMemo(() => requirements.data ?? [], [requirements.data]);
+  const list = useMemo(
+    () =>
+      requirements.data && requirements.data.length > 0
+        ? requirements.data
+        : DEFAULT_PHOTO_REQUIREMENTS,
+    [requirements.data],
+  );
   const missing = useMemo(
     () => list.filter((entry) => entry.required && !photos[entry.id]),
     [list, photos],
@@ -76,13 +106,6 @@ export function PhotosStep({
             <Alert tone="danger" title="Couldn't load the photo checklist">
               {requirements.error}
             </Alert>
-          ) : list.length === 0 ? (
-            <EmptyState
-              icon={<CameraIcon />}
-              title="No photo requirements configured"
-              description="Aurawatt has not published a photo checklist yet. You can continue without uploading photos."
-              compact
-            />
           ) : (
             <>
               {showMissing && missing.length > 0 ? (
