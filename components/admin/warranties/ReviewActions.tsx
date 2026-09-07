@@ -1,19 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { PhotoRequirement, WarrantyRegistration } from "@/lib/types";
+import type { PhotoRequirement, ProductModel, WarrantyRegistration } from "@/lib/types";
 import {
   approveWarranty,
   rejectWarranty,
   requestCorrection,
 } from "@/lib/services/warranties";
 import { getPhotoRequirements } from "@/lib/services/photo-requirements";
+import { getProductModels } from "@/lib/services/products";
 import { useAsync, useMutation } from "@/lib/hooks/useAsync";
 import { calculateWarrantyPeriod, toIsoDate } from "@/lib/warranty/dates";
 import { formatDate } from "@/lib/utils/format";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { Checkbox, Input, Textarea } from "@/components/ui/Field";
+import { Checkbox, Input, Select, Textarea } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Feedback";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -37,6 +38,10 @@ export function ReviewActions({
 
   const requirements = useAsync<PhotoRequirement[]>(
     () => getPhotoRequirements(),
+    [],
+  );
+  const models = useAsync<ProductModel[]>(
+    () => getProductModels({ activeOnly: true }),
     [],
   );
 
@@ -216,16 +221,27 @@ export function ReviewActions({
         <div className="flex flex-col gap-4">
           {approve.error ? <Alert tone="danger">{approve.error}</Alert> : null}
 
-          <Input
+          <Select
             label="Model number"
-            hint="Enter the exact model number printed on the product side label."
+            hint="Select the exact model number printed on the product side label."
             value={modelName}
             onChange={(event) => {
               setModelName(event.target.value);
               setFieldError(undefined);
             }}
-            placeholder="e.g. AW-HI-5KW"
+            placeholder={models.loading ? "Loading models…" : "Select a model"}
             error={fieldError}
+            options={[
+              ...(registration.modelName &&
+              !models.data?.some((model) => model.name === registration.modelName)
+                ? [{ value: registration.modelName, label: registration.modelName }]
+                : []),
+              ...(models.data ?? []).map((model) => ({
+                value: model.name,
+                label: `${model.name} · ${model.series}`,
+              })),
+            ]}
+            disabled={models.loading}
             required
           />
 

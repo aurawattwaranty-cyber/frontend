@@ -14,6 +14,7 @@ export interface CustomerExperienceUpdate {
     subheading?: string;
     sections?: Partial<CustomerSectionConfig>[];
     fields?: Partial<CustomerFieldConfig>[];
+    deletedFieldIds?: string[];
   };
   status?: {
     heading?: string;
@@ -111,7 +112,7 @@ export function fieldProps(
   }
 
   return {
-    visible: config.visible || config.locked,
+    visible: config.visible,
     props: {
       label: config.label,
       ...(config.placeholder ? { placeholder: config.placeholder } : {}),

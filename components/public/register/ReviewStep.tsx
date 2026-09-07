@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/Modal";
 import { EvidenceImage } from "@/components/ui/EvidenceImage";
 import { ArrowLeftIcon, ImageIcon, PencilIcon } from "@/components/icons";
 import type { DetailsFormValue } from "./DetailsStep";
+import { useCustomerExperience } from "@/lib/hooks/useCustomerExperience";
 
 export function ReviewStep({
   serial,
@@ -37,6 +38,7 @@ export function ReviewStep({
   error: string | null;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const experience = useCustomerExperience();
   const { customer, installer, installation } = details;
 
   return (
@@ -80,6 +82,21 @@ export function ReviewStep({
               label="Address"
               value={`${customer.address}, ${customer.city}, ${customer.state} ${customer.pincode}`}
             />
+            {(experience?.register.fields ?? [])
+              .filter(
+                (field) =>
+                  field.id.startsWith("custom.") &&
+                  field.section === "customer" &&
+                  (field.visible || field.locked) &&
+                  details.customFields[field.id],
+              )
+              .map((field) => (
+                <DetailRow
+                  key={field.id}
+                  label={field.label}
+                  value={details.customFields[field.id]}
+                />
+              ))}
           </dl>
         </CardBody>
       </Card>
@@ -97,6 +114,21 @@ export function ReviewStep({
             {installer.installerId ? (
               <DetailRow label="Installer ID" value={installer.installerId} monospace />
             ) : null}
+            {(experience?.register.fields ?? [])
+              .filter(
+                (field) =>
+                  field.id.startsWith("custom.") &&
+                  field.section === "installer" &&
+                  (field.visible || field.locked) &&
+                  details.customFields[field.id],
+              )
+              .map((field) => (
+                <DetailRow
+                  key={field.id}
+                  label={field.label}
+                  value={details.customFields[field.id]}
+                />
+              ))}
           </dl>
         </CardBody>
       </Card>
@@ -123,6 +155,21 @@ export function ReviewStep({
                 value={`${batteryModelName ?? "—"} · ${installation.batterySerial}`}
               />
             ) : null}
+            {(experience?.register.fields ?? [])
+              .filter(
+                (field) =>
+                  field.id.startsWith("custom.") &&
+                  field.section === "installation" &&
+                  (field.visible || field.locked) &&
+                  details.customFields[field.id],
+              )
+              .map((field) => (
+                <DetailRow
+                  key={field.id}
+                  label={field.label}
+                  value={details.customFields[field.id]}
+                />
+              ))}
           </dl>
         </CardBody>
       </Card>

@@ -48,6 +48,7 @@ export interface DetailsFormValue {
   customer: CustomerDetails;
   installer: InstallerDetails;
   installation: InstallationFormValue;
+  customFields: Record<string, string>;
 }
 
 export const EMPTY_DETAILS: DetailsFormValue = {
@@ -75,6 +76,7 @@ export const EMPTY_DETAILS: DetailsFormValue = {
     batteryModelId: "",
     batterySerial: "",
   },
+  customFields: {},
 };
 
 function composeCustomerAddress(customer: CustomerDetails): string {
@@ -98,6 +100,13 @@ export function DetailsStep({
 }) {
   const experience = useCustomerExperience();
   const lookup = useMemo(() => buildFieldLookup(experience), [experience]);
+  const customFields = useMemo(
+    () =>
+      (experience?.register.fields ?? [])
+        .filter((entry) => entry.id.startsWith("custom."))
+        .sort((a, b) => a.order - b.order),
+    [experience],
+  );
 
   /** Resolved label/placeholder/hint/required/visible for one configured field. */
   const field = (
@@ -181,6 +190,7 @@ export function DetailsStep({
   const [installationErrors, setInstallationErrors] = useState<
     Errors<InstallationFormValue>
   >({});
+  const [customErrors, setCustomErrors] = useState<Record<string, FieldError>>({});
 
   const batteryModels = useAsync<ProductModel[]>(
     () => getProductModels({ activeOnly: true, productType: "battery" }),
@@ -231,6 +241,16 @@ export function DetailsStep({
     }
   }
 
+  function setCustomField(id: string, fieldValue: string) {
+    onChange({
+      ...value,
+      customFields: { ...value.customFields, [id]: fieldValue },
+    });
+    if (customErrors[id]) {
+      setCustomErrors((errors) => ({ ...errors, [id]: undefined }));
+    }
+  }
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     const { customer, installer, installation } = value;
@@ -245,7 +265,7 @@ export function DetailsStep({
       validate: () => FieldError,
     ): FieldError => {
       const config = lookup(id);
-      if (config && !config.visible && !config.locked) return undefined;
+      if (config && !config.visible) return undefined;
       if (config && !config.required && !value.trim()) return undefined;
       return validate();
     };
@@ -314,15 +334,26 @@ export function DetailsStep({
         ? required(installation.batterySerial, "Battery serial number")
         : undefined,
     };
+    const nextCustomErrors: Record<string, FieldError> = {};
+    customFields.forEach((config) => {
+      if (!config.visible && !config.locked) return;
+      const fieldValue = value.customFields[config.id] ?? "";
+      nextCustomErrors[config.id] =
+        config.required && !fieldValue.trim()
+          ? required(fieldValue, config.label)
+          : undefined;
+    });
 
     setCustomerErrors(nextCustomerErrors);
     setInstallerErrors(nextInstallerErrors);
     setInstallationErrors(nextInstallationErrors);
+    setCustomErrors(nextCustomErrors);
 
     if (
       hasErrors(nextCustomerErrors) ||
       hasErrors(nextInstallerErrors) ||
       hasErrors(nextInstallationErrors)
+      || hasErrors(nextCustomErrors)
     ) {
       document
         .querySelector('[aria-invalid="true"]')
@@ -412,6 +443,17 @@ export function DetailsStep({
               autoComplete="postal-code"
             />
           ) : null}
+          {customFields
+            .filter((config) => config.section === "customer")
+            .map((config) => (
+              <ConfiguredCustomField
+                key={config.id}
+                config={config}
+                value={value.customFields[config.id] ?? ""}
+                error={customErrors[config.id]}
+                onChange={setCustomField}
+              />
+            ))}
         </CardBody>
       </Card>
 
@@ -472,6 +514,17 @@ export function DetailsStep({
               }
             />
           ) : null}
+          {customFields
+            .filter((config) => config.section === "installer")
+            .map((config) => (
+              <ConfiguredCustomField
+                key={config.id}
+                config={config}
+                value={value.customFields[config.id] ?? ""}
+                error={customErrors[config.id]}
+                onChange={setCustomField}
+              />
+            ))}
         </CardBody>
       </Card>
 
@@ -578,6 +631,17 @@ export function DetailsStep({
               </div>
             ) : null}
           </div>
+          {customFields
+            .filter((config) => config.section === "installation")
+            .map((config) => (
+              <ConfiguredCustomField
+                key={config.id}
+                config={config}
+                value={value.customFields[config.id] ?? ""}
+                error={customErrors[config.id]}
+                onChange={setCustomField}
+              />
+            ))}
         </CardBody>
       </Card>
 
@@ -599,6 +663,36 @@ export function DetailsStep({
         </Button>
       </div>
     </form>
+  );
+}
+
+function ConfiguredCustomField({
+  config,
+  value,
+  error,
+  onChange,
+}: {
+  config: { id: string; label: string; placeholder: string; hint: string; required: boolean; visible: boolean; locked: boolean; inputType?: "text" | "textarea" | "date" };
+  value: string;
+  error?: string;
+  onChange: (id: string, value: string) => void;
+}) {
+  if (!config.visible && !config.locked) return null;
+  const props = {
+    label: config.label,
+    placeholder: config.placeholder || undefined,
+    hint: config.hint || undefined,
+    required: config.required,
+    value,
+    error,
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      onChange(config.id, event.target.value),
+    containerClassName: "sm:col-span-2",
+  };
+  return config.inputType === "textarea" ? (
+    <Textarea {...props} rows={3} />
+  ) : (
+    <Input {...props} type={config.inputType === "date" ? "date" : "text"} />
   );
 }
 

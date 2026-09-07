@@ -94,6 +94,7 @@ export function RegisterWizard() {
           ? details.installation.batterySerial
           : undefined,
       },
+      customFields: details.customFields,
       photos: photoList,
     };
 
