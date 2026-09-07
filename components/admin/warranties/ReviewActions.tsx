@@ -26,6 +26,41 @@ import {
 
 type OpenDialog = "approve" | "correction" | "reject" | null;
 
+function getSeriesScopedModelOptions(
+  models: ProductModel[] | null,
+  referenceModelId: string,
+  referenceModelName: string,
+  referenceSerial: string,
+  productType: ProductModel["productType"],
+): ProductModel[] {
+  if (!models?.length) return [];
+
+  const directReference = models.find(
+    (model) =>
+      (referenceModelId && model.id === referenceModelId) ||
+      (referenceModelName && model.name === referenceModelName),
+  );
+  const activeModels = models.filter(
+    (model) => model.active && model.productType === productType,
+  );
+  const serialKey = referenceSerial.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const serialReference = serialKey
+    ? [...activeModels]
+        .filter((model) => {
+          const modelKey = model.name.toUpperCase().replace(/[^A-Z0-9]/g, "");
+          return serialKey.startsWith(modelKey);
+        })
+        .sort((a, b) => b.name.length - a.name.length)[0]
+    : undefined;
+  const referenceModel = directReference ?? serialReference;
+
+  if (!referenceModel?.series) {
+    return activeModels;
+  }
+
+  return activeModels.filter((model) => model.series === referenceModel.series);
+}
+
 export function ReviewActions({
   registration,
   onUpdated,
@@ -41,11 +76,14 @@ export function ReviewActions({
     [],
   );
   const models = useAsync<ProductModel[]>(
-    () => getProductModels({ activeOnly: true }),
+    () => getProductModels(),
     [],
   );
 
   const [modelName, setModelName] = useState(registration.modelName);
+  const [batteryModel, setBatteryModel] = useState(
+    registration.installation.batteryModel ?? "",
+  );
   const [startDate, setStartDate] = useState(
     registration.installation.installationDate,
   );
@@ -60,6 +98,66 @@ export function ReviewActions({
   const approve = useMutation(approveWarranty);
   const correction = useMutation(requestCorrection);
   const reject = useMutation(rejectWarranty);
+
+  const modelSeries = useMemo(
+    () =>
+      models.data?.find(
+        (model) =>
+          (registration.modelId && model.id === registration.modelId) ||
+          (registration.modelName && model.name === registration.modelName),
+      )?.series ?? null,
+    [models.data, registration.modelId, registration.modelName],
+  );
+
+  const modelOptions = useMemo(() => {
+    const scopedModels = getSeriesScopedModelOptions(
+      models.data,
+      registration.modelId,
+      registration.modelName,
+      registration.serial,
+      registration.productType,
+    );
+    const currentModelIsMissing =
+      !!registration.modelName &&
+      !scopedModels.some((model) => model.name === registration.modelName);
+
+    return [
+      ...(currentModelIsMissing
+        ? [{ value: registration.modelName, label: registration.modelName }]
+        : []),
+      ...scopedModels.map((model) => ({
+        value: model.name,
+        label: `${model.name} · ${model.series}`,
+      })),
+    ];
+  }, [
+    models.data,
+    registration.modelId,
+    registration.modelName,
+    registration.serial,
+    registration.productType,
+  ]);
+
+  const batteryOptions = useMemo(
+    () => {
+      const scopedModels = getSeriesScopedModelOptions(
+        models.data,
+        "",
+        registration.installation.batteryModel ?? "",
+        registration.installation.batterySerial ?? "",
+        "battery",
+      );
+      return scopedModels.map((model) => ({
+        value: model.name,
+        label: `${model.name} · ${model.series}`,
+      }));
+    },
+    [
+      models.data,
+      registration.installation.batteryModel,
+      registration.installation.batterySerial,
+    ],
+  );
 
   const effectiveMonths = durationMonths
     ? Number(durationMonths)
@@ -86,8 +184,15 @@ export function ReviewActions({
       setFieldError("Enter the model number shown on the side label.");
       return;
     }
+    if (registration.installation.batteryInstalled && !batteryModel.trim()) {
+      setFieldError("Select the battery model number shown on the battery label.");
+      return;
+    }
     const updated = await approve.run(registration.id, {
       modelName: modelName.trim(),
+      batteryModel: registration.installation.batteryInstalled
+        ? batteryModel.trim()
+        : undefined,
       startDate,
       durationMonths: durationMonths ? Number(durationMonths) : undefined,
       note: approveNote.trim() || undefined,
@@ -201,7 +306,11 @@ export function ReviewActions({
         open={dialog === "approve"}
         onClose={closeDialog}
         title="Approve and activate warranty"
-        description="Confirm the model from the side label. The warranty period is calculated from the installation date."
+        description={
+          modelSeries
+            ? `Only ${modelSeries} models are shown here. Confirm the exact model from the side label and the warranty period will be calculated from the installation date.`
+            : "Confirm the exact model from the side label and the warranty period will be calculated from the installation date."
+        }
         busy={approve.pending}
         footer={
           <>
@@ -223,7 +332,11 @@ export function ReviewActions({
 
           <Select
             label="Model number"
-            hint="Select the exact model number printed on the product side label."
+            hint={
+              modelSeries
+                ? `Showing only models from ${modelSeries} based on the entered serial number.`
+                : "Showing active models. The exact model number is printed on the product side label."
+            }
             value={modelName}
             onChange={(event) => {
               setModelName(event.target.value);
@@ -231,19 +344,29 @@ export function ReviewActions({
             }}
             placeholder={models.loading ? "Loading models…" : "Select a model"}
             error={fieldError}
-            options={[
-              ...(registration.modelName &&
-              !models.data?.some((model) => model.name === registration.modelName)
-                ? [{ value: registration.modelName, label: registration.modelName }]
-                : []),
-              ...(models.data ?? []).map((model) => ({
-                value: model.name,
-                label: `${model.name} · ${model.series}`,
-              })),
-            ]}
+            options={modelOptions}
             disabled={models.loading}
             required
           />
+
+          {registration.installation.batteryInstalled ? (
+            <Select
+              label="Battery model number"
+              hint="Select the exact model number shown on the battery label."
+              value={batteryModel}
+              onChange={(event) => {
+                setBatteryModel(event.target.value);
+                setFieldError(undefined);
+              }}
+              placeholder={
+                models.loading ? "Loading battery models…" : "Select a battery model"
+              }
+              error={fieldError}
+              options={batteryOptions}
+              disabled={models.loading}
+              required
+            />
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
