@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import type { ProductSeries, SerialImportFile } from "@/lib/types";
+import type { ProductSeries, ProductType, SerialImportFile } from "@/lib/types";
 import { createSeries, deleteSeries, getSeries } from "@/lib/services/series";
 import { useAsync, useMutation } from "@/lib/hooks/useAsync";
 import { formatDate } from "@/lib/utils/format";
 import { Alert, EmptyState, TableSkeleton } from "@/components/ui/Feedback";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Field";
+import { Input, Select } from "@/components/ui/Field";
 import { UploadIcon, PlusIcon, PackageIcon } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 import { BulkImportModal } from "./BulkImportModal";
@@ -21,17 +21,18 @@ export function SeriesImportsView() {
   const create = useMutation(createSeries);
   const remove = useMutation(deleteSeries);
   const [name, setName] = useState("");
+  const [productType, setProductType] = useState<ProductType>("inverter");
   const [selected, setSelected] = useState<{ seriesId: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductSeries | null>(null);
   const [confirmationName, setConfirmationName] = useState("");
 
   async function handleCreate() {
     if (!name.trim()) return;
-    const created = await create.run(name.trim());
+    const created = await create.run(name.trim(), productType);
     if (created) {
       setName("");
       await seriesResult.refresh();
-      toast.success("Series added", `${created.name} is ready for serial uploads.`);
+      toast.success("Series added", `${created.name} is ready for ${productType} serial uploads.`);
     }
   }
 
@@ -46,7 +47,7 @@ export function SeriesImportsView() {
       <Card className="mb-5">
         <CardHeader
           title="Create a product series"
-          description="Create the series first, then attach one or more serial files to it."
+          description="Choose the product type first. Every serial uploaded to this series is classified the same way."
         />
         <CardBody className="flex flex-wrap items-end gap-3">
           <Input
@@ -55,6 +56,17 @@ export function SeriesImportsView() {
             onChange={(event) => setName(event.target.value)}
             placeholder="e.g. AuraWatt HybridPro"
             containerClassName="min-w-[260px] flex-1"
+          />
+          <Select
+            label="Serial product type"
+            value={productType}
+            onChange={(event) => setProductType(event.target.value as ProductType)}
+            options={[
+              { value: "inverter", label: "Inverter" },
+              { value: "battery", label: "Battery" },
+              { value: "combo", label: "All-in-one" },
+            ]}
+            containerClassName="min-w-[180px]"
           />
           <Button onClick={() => void handleCreate()} loading={create.pending} icon={<PlusIcon />}>
             Add Series
@@ -75,7 +87,7 @@ export function SeriesImportsView() {
               <Card key={entry.id}>
                 <CardHeader
                   title={entry.name}
-                  description={`${files.reduce((total, file) => total + file.importedCount, 0)} serials mapped from ${files.length} file${files.length === 1 ? "" : "s"}.`}
+                  description={`${entry.productType === "combo" ? "All-in-one" : entry.productType[0].toUpperCase() + entry.productType.slice(1)} serials · ${files.reduce((total, file) => total + file.importedCount, 0)} mapped from ${files.length} file${files.length === 1 ? "" : "s"}.`}
                   action={
                     <div className="flex flex-wrap justify-end gap-2">
                       <Button
@@ -101,7 +113,7 @@ export function SeriesImportsView() {
                   }
                 />
                 <CardBody>
-                  <p className="mb-4 text-[13px] text-muted">Model assignment happens during warranty activation after the customer submits a claim.</p>
+                  <p className="mb-4 text-[13px] text-muted">All uploads here are saved as {entry.productType === "combo" ? "all-in-one" : entry.productType} serials. Model assignment happens during warranty activation after the customer submits a claim.</p>
                   {files.length === 0 ? <p className="text-[13px] text-muted">No files uploaded for this series yet.</p> : (
                     <ul className="divide-y divide-line rounded-lg border border-line">
                       {files.map((file) => (

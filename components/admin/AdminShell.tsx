@@ -29,6 +29,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const user = useSession();
   const [drawer, setDrawer] = useState({ open: false, path: pathname });
   const [resetOpen, setResetOpen] = useState(false);
+  // Production warranty records must never be reset from the normal UI.
+  const canResetData = process.env.NODE_ENV !== "production";
 
   // Navigation is a side effect, not state — the redirect is the only thing
   // this effect does.
@@ -146,49 +148,53 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="mx-auto w-full max-w-5xl">{children}</div>
 
-          <div className="mx-auto mt-10 flex w-full max-w-5xl justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setResetOpen(true)}
-              icon={<RefreshIcon />}
-              className="text-faint"
-            >
-              Clear data
-            </Button>
-          </div>
+          {canResetData ? (
+            <div className="mx-auto mt-10 flex w-full max-w-5xl justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setResetOpen(true)}
+                icon={<RefreshIcon />}
+                className="text-faint"
+              >
+                Clear data
+              </Button>
+            </div>
+          ) : null}
         </main>
       </div>
 
-      <ConfirmDialog
-        open={resetOpen}
-        onClose={() => setResetOpen(false)}
-        onConfirm={() => {
-          void resetDatabase()
-            .then(() => {
-              setResetOpen(false);
-              toast.success(
-                "Data cleared",
-                "Registrations, serials, photo requirements and models were cleared.",
-              );
-            })
-            .catch(() => {
-              toast.error(
-                "Reset failed",
-                "The backend could not clear the data right now.",
-              );
-            });
-        }}
-        title="Clear all data?"
-        description="This removes registrations, serial numbers, product models and photo requirements from the current workspace."
-        confirmLabel="Clear data"
-        tone="danger"
-      >
-        <p className="text-[13px] leading-relaxed text-muted">
-          This affects the data stored in this workspace only. Anything you
-          submitted or approved during this session will be discarded.
-        </p>
-      </ConfirmDialog>
+      {canResetData ? (
+        <ConfirmDialog
+          open={resetOpen}
+          onClose={() => setResetOpen(false)}
+          onConfirm={() => {
+            void resetDatabase()
+              .then(() => {
+                setResetOpen(false);
+                toast.success(
+                  "Data cleared",
+                  "Registrations, serials, photo requirements and models were cleared.",
+                );
+              })
+              .catch(() => {
+                toast.error(
+                  "Reset failed",
+                  "The backend could not clear the data right now.",
+                );
+              });
+          }}
+          title="Clear all data?"
+          description="This removes registrations, serial numbers, product models and photo requirements from the current workspace."
+          confirmLabel="Clear data"
+          tone="danger"
+        >
+          <p className="text-[13px] leading-relaxed text-muted">
+            This affects the data stored in this workspace only. Anything you
+            submitted or approved during this session will be discarded.
+          </p>
+        </ConfirmDialog>
+      ) : null}
     </div>
   );
 }

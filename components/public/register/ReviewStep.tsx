@@ -17,7 +17,6 @@ export function ReviewStep({
   details,
   photos,
   installationAddress,
-  batteryModelName,
   onEditSerial,
   onEditDetails,
   onEditPhotos,
@@ -29,7 +28,6 @@ export function ReviewStep({
   details: DetailsFormValue;
   photos: WarrantyPhoto[];
   installationAddress: string;
-  batteryModelName?: string;
   onEditSerial: () => void;
   onEditDetails: () => void;
   onEditPhotos: () => void;
@@ -56,6 +54,7 @@ export function ReviewStep({
         <CardBody>
           <dl className="grid gap-4 sm:grid-cols-3">
             <DetailRow label="Serial Number" value={serial.serial} monospace />
+            <DetailRow label="Series" value={serial.seriesName || "—"} />
             <DetailRow
               label="Model"
               value={serial.modelName || "To be assigned by admin"}
@@ -151,8 +150,9 @@ export function ReviewStep({
             />
             {installation.batteryInstalled ? (
               <DetailRow
-                label="Battery"
-                value={`${batteryModelName ?? "—"} · ${installation.batterySerial}`}
+                label="Battery Serial Number"
+                value={installation.batterySerial || "—"}
+                monospace
               />
             ) : null}
             {(experience?.register.fields ?? [])
@@ -245,6 +245,7 @@ export function ReviewStep({
       >
         <dl className="flex flex-col gap-3">
           <DetailRow label="Serial Number" value={serial.serial} monospace />
+          {serial.seriesName ? <DetailRow label="Series" value={serial.seriesName} /> : null}
           <DetailRow label="Customer" value={customer.fullName} />
           <DetailRow
             label="Installation Date"

@@ -1,6 +1,6 @@
 import { apiRequest } from "@/lib/api/client";
 import { notifyApiRevision } from "@/lib/api/revision";
-import type { ProductSeries, SerialImportFile } from "@/lib/types";
+import type { ProductSeries, ProductType, SerialImportFile } from "@/lib/types";
 
 export async function getSeries(): Promise<{
   series: ProductSeries[];
@@ -9,10 +9,13 @@ export async function getSeries(): Promise<{
   return apiRequest("/series");
 }
 
-export async function createSeries(name: string): Promise<ProductSeries> {
+export async function createSeries(
+  name: string,
+  productType: ProductType,
+): Promise<ProductSeries> {
   const response = await apiRequest<{ item: ProductSeries }>("/series", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, productType }),
   });
   notifyApiRevision();
   return response.item;

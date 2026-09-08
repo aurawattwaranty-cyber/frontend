@@ -112,7 +112,7 @@ export function BulkImportModal({
       open
       onClose={onClose}
       title="Bulk import serial numbers"
-      description="Upload serial lists to this series. The product model will be assigned when the warranty is activated."
+      description="Upload serial lists to this series. Its selected product type is applied to every serial; the model is assigned during warranty activation."
       size="lg"
       busy={importRows.pending}
       footer={
@@ -254,6 +254,7 @@ export function BulkImportModal({
                   <TH>Row</TH>
                   <TH>Serial Number</TH>
                   <TH>Model</TH>
+                  <TH>Type</TH>
                   <TH>Status</TH>
                 </TR>
               </THead>
@@ -263,6 +264,7 @@ export function BulkImportModal({
                     <TD className="text-muted tabular-nums">{row.rowNumber}</TD>
                     <TD className="font-mono text-[12px]">{row.serial || "—"}</TD>
                     <TD>{row.modelName || "—"}</TD>
+                    <TD className="capitalize">{row.productType || "—"}</TD>
                     <TD>
                       {row.valid ? (
                         <Badge tone="success">Ready</Badge>

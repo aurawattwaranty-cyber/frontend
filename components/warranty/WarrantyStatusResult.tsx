@@ -93,6 +93,9 @@ export function WarrantyStatusResult({
               value={registration.serial}
               monospace
             />
+            {registration.seriesName ? (
+              <DetailRow label="Series" value={registration.seriesName} />
+            ) : null}
             {showBlock("product") ? (
               <DetailRow
                 label={blockLabel(experience, "product", "Product")}

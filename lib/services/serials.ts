@@ -35,9 +35,25 @@ export async function validateSerial(
   });
 }
 
+/** Confirms that a selected battery serial is already in inventory and usable. */
+export async function validateBatterySerial(
+  serial: string,
+  modelId?: string,
+): Promise<SerialNumber> {
+  const response = await apiRequest<{ serial: SerialNumber }>(
+    "/serials/validate-battery",
+    {
+      method: "POST",
+      body: JSON.stringify({ serial, ...(modelId ? { modelId } : {}) }),
+    },
+  );
+  return response.serial;
+}
+
 export interface SerialQuery {
   search?: string;
   status?: SerialStatus | "all";
+  productType?: ProductType | "all";
   page?: number;
   pageSize?: number;
 }
@@ -46,6 +62,9 @@ function buildQuery(query: SerialQuery = {}): string {
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
   if (query.status && query.status !== "all") params.set("status", query.status);
+  if (query.productType && query.productType !== "all") {
+    params.set("productType", query.productType);
+  }
   if (query.page) params.set("page", String(query.page));
   if (query.pageSize) params.set("pageSize", String(query.pageSize));
   const out = params.toString();

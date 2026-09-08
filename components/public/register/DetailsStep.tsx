@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import type {
   CustomerDetails,
   InstallerDetails,
-  ProductModel,
   SerialNumber,
 } from "@/lib/types";
-import { getProductModels } from "@/lib/services/products";
-import { normaliseSerial } from "@/lib/services/serials";
-import { useAsync } from "@/lib/hooks/useAsync";
+import {
+  normaliseSerial,
+  validateBatterySerial,
+} from "@/lib/services/serials";
+import { toUserMessage } from "@/lib/services/errors";
 import { STATE_OPTIONS } from "@/lib/data/states";
 import { formatCapacity } from "@/lib/utils/format";
 import { toIsoDate } from "@/lib/warranty/dates";
@@ -40,7 +41,6 @@ export interface InstallationFormValue {
   installationAddress: string;
   sameAsCustomerAddress: boolean;
   batteryInstalled: boolean;
-  batteryModelId: string;
   batterySerial: string;
 }
 
@@ -73,7 +73,6 @@ export const EMPTY_DETAILS: DetailsFormValue = {
     installationAddress: "",
     sameAsCustomerAddress: true,
     batteryInstalled: false,
-    batteryModelId: "",
     batterySerial: "",
   },
   customFields: {},
@@ -176,10 +175,6 @@ export function DetailsStep({
     label: "A battery system was installed with this inverter",
     hint: "Battery packs are covered by their own warranty term.",
   });
-  const batteryModel = field("installation.batteryModelId", {
-    label: "Battery Model",
-    placeholder: "Select battery model",
-  });
   const batterySerialField = field("installation.batterySerial", {
     label: "Battery Serial Number",
     placeholder: "Enter battery serial number",
@@ -191,20 +186,7 @@ export function DetailsStep({
     Errors<InstallationFormValue>
   >({});
   const [customErrors, setCustomErrors] = useState<Record<string, FieldError>>({});
-
-  const batteryModels = useAsync<ProductModel[]>(
-    () => getProductModels({ activeOnly: true, productType: "battery" }),
-    [],
-  );
-
-  const batteryOptions = useMemo(
-    () =>
-      (batteryModels.data ?? []).map((model) => ({
-        value: model.id,
-        label: `${model.name} (${formatCapacity(model.capacityKw, "battery")})`,
-      })),
-    [batteryModels.data],
-  );
+  const [checkingBatterySerial, setCheckingBatterySerial] = useState(false);
 
   const today = toIsoDate(new Date());
 
@@ -251,7 +233,7 @@ export function DetailsStep({
     }
   }
 
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     const { customer, installer, installation } = value;
 
@@ -325,11 +307,6 @@ export function DetailsStep({
             () =>
               required(installation.installationAddress, "Installation address"),
           ),
-      batteryModelId: installation.batteryInstalled
-        ? installation.batteryModelId
-          ? undefined
-          : "Select the battery model that was installed."
-        : undefined,
       batterySerial: installation.batteryInstalled
         ? required(installation.batterySerial, "Battery serial number")
         : undefined,
@@ -359,6 +336,24 @@ export function DetailsStep({
         .querySelector('[aria-invalid="true"]')
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
+    }
+
+    if (installation.batteryInstalled) {
+      setCheckingBatterySerial(true);
+      try {
+        await validateBatterySerial(installation.batterySerial);
+      } catch (cause) {
+        setInstallationErrors((errors) => ({
+          ...errors,
+          batterySerial: toUserMessage(cause),
+        }));
+        document
+          .querySelector('[aria-invalid="true"]')
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      } finally {
+        setCheckingBatterySerial(false);
+      }
     }
 
     onContinue();
@@ -600,24 +595,14 @@ export function DetailsStep({
             />
 
             {value.installation.batteryInstalled ? (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Select
-                  {...batteryModel.props}
-                  value={value.installation.batteryModelId}
-                  onChange={(event) =>
-                    setInstallation("batteryModelId", event.target.value)
-                  }
-                  error={installationErrors.batteryModelId}
-                  options={batteryOptions}
-                  placeholder={
-                    batteryModels.loading
-                      ? "Loading models…"
-                      : (batteryModel.props.placeholder ?? "Select battery model")
-                  }
-                  disabled={batteryModels.loading}
-                />
+              <div className="mt-4 max-w-md">
                 <Input
                   {...batterySerialField.props}
+                  required
+                  hint={
+                    batterySerialField.props.hint ||
+                    "Enter a battery serial that has been uploaded to Aurawatt inventory."
+                  }
                   value={value.installation.batterySerial}
                   onChange={(event) =>
                     setInstallation(
@@ -658,6 +643,8 @@ export function DetailsStep({
           type="submit"
           size="lg"
           iconAfter={<ChevronRightIcon className="text-base" />}
+          loading={checkingBatterySerial}
+          loadingText="Verifying battery serial…"
         >
           Continue to Photos
         </Button>

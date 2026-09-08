@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Paginated, SerialNumber, SerialStatus } from "@/lib/types";
+import type { Paginated, ProductType, SerialNumber, SerialStatus } from "@/lib/types";
 import { getSerials } from "@/lib/services/serials";
 import { useAsync, useDebounced, usePagination } from "@/lib/hooks/useAsync";
 import { formatDate } from "@/lib/utils/format";
@@ -28,14 +28,22 @@ const FILTERS: { value: SerialStatus | "all"; label: string }[] = [
   { value: "registered", label: "Registered" },
 ];
 
+const TYPE_FILTERS: { value: ProductType | "all"; label: string }[] = [
+  { value: "all", label: "All types" },
+  { value: "inverter", label: "Inverter" },
+  { value: "battery", label: "Battery" },
+  { value: "combo", label: "All-in-one" },
+];
+
 export function SerialInventoryView() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<SerialStatus | "all">("all");
+  const [productType, setProductType] = useState<ProductType | "all">("all");
   const debouncedSearch = useDebounced(search);
-  const [page, setPage] = usePagination(`${debouncedSearch}|${status}`);
+  const [page, setPage] = usePagination(`${debouncedSearch}|${status}|${productType}`);
   const result = useAsync<Paginated<SerialNumber>>(
-    () => getSerials({ search: debouncedSearch, status, page, pageSize: 25 }),
-    [debouncedSearch, status, page],
+    () => getSerials({ search: debouncedSearch, status, productType, page, pageSize: 25 }),
+    [debouncedSearch, status, productType, page],
   );
   const rows = result.data?.items ?? [];
 
@@ -68,12 +76,34 @@ export function SerialInventoryView() {
             </button>
           ))}
         </div>
+        <div className="flex flex-wrap gap-1.5" aria-label="Filter by product type">
+          {TYPE_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              onClick={() => setProductType(filter.value)}
+              aria-pressed={productType === filter.value}
+              className={cn(
+                "rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors",
+                productType === filter.value
+                  ? "border-brand-500 bg-brand-500 text-white"
+                  : "border-line-strong bg-surface text-ink-soft hover:bg-canvas",
+              )}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
       </CardBody>
 
       {result.initialLoading ? <TableSkeleton rows={8} columns={6} /> : result.error ? (
         <CardBody><Alert tone="danger" title="Could not load serial numbers">{result.error}</Alert></CardBody>
       ) : rows.length === 0 ? (
-        <EmptyState icon={<BarcodeIcon />} title="No serial numbers found" description="Uploaded serial numbers will appear here." />
+        <EmptyState
+          icon={<BarcodeIcon />}
+          title={productType === "battery" ? "No battery serial numbers found" : "No serial numbers found"}
+          description={productType === "battery" ? "No uploaded serial is linked to a Battery/LFP series yet. Battery model codes alone are not serial numbers." : "Uploaded serial numbers will appear here."}
+        />
       ) : (
         <>
           <TableScroll>
@@ -83,6 +113,7 @@ export function SerialInventoryView() {
                   <TH>Serial Number</TH>
                   <TH>Series</TH>
                   <TH>Model</TH>
+                  <TH>Product Type</TH>
                   <TH>Status</TH>
                   <TH>Added On</TH>
                 </TR>
@@ -93,6 +124,7 @@ export function SerialInventoryView() {
                     <TD className="font-mono text-[12px] font-medium text-ink">{serial.serial}</TD>
                     <TD>{serial.seriesName || "—"}</TD>
                     <TD>{serial.modelName || "Not assigned"}</TD>
+                    <TD className="capitalize">{serial.productType === "combo" ? "All-in-one" : serial.productType}</TD>
                     <TD><SerialStatusBadge status={serial.status} /></TD>
                     <TD className="whitespace-nowrap text-muted">{formatDate(serial.addedAt)}</TD>
                   </TR>

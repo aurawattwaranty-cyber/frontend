@@ -37,6 +37,8 @@ export interface SerialNumber {
 export interface ProductSeries {
   id: string;
   name: string;
+  /** Every serial uploaded to this group belongs to this product type. */
+  productType: ProductType;
   active: boolean;
   createdAt: string;
 }
@@ -86,6 +88,8 @@ export interface InstallationDetails {
   batteryInstalled: boolean;
   batteryModel?: string;
   batterySerial?: string;
+  batterySeriesId?: string;
+  batterySeriesName?: string;
 }
 
 export interface WarrantyPhoto {
@@ -121,6 +125,9 @@ export interface WarrantyRegistration {
   /** Public warranty ID — the value printed on the certificate and QR code. */
   id: string;
   serial: string;
+  /** Series assigned to the serial when it was imported. */
+  seriesId?: string;
+  seriesName?: string;
   modelId: string;
   modelName: string;
   capacityKw: number;

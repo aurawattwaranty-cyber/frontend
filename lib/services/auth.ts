@@ -119,18 +119,20 @@ export async function login(input: LoginInput): Promise<AdminUser> {
     }),
   });
   sessionRequestId += 1;
-  setCachedSession(response.user);
   setStoredSessionToken(response.token);
+  setCachedSession(response.user);
   return response.user;
 }
 
-export function logout(): Promise<void> {
-  invalidateSession();
-  return apiRequest<{ ok: boolean }>("/auth/logout", {
-    method: "POST",
-  })
-    .catch(() => undefined)
-    .then(() => undefined);
+export async function logout(): Promise<void> {
+  try {
+    // Keep the token in place until the API receives the logout request.
+    await apiRequest<{ ok: boolean }>("/auth/logout", { method: "POST" });
+  } catch {
+    // Local sign-out must still succeed if the server is currently unreachable.
+  } finally {
+    invalidateSession();
+  }
 }
 
 export async function getAdminUsers(): Promise<AdminUser[]> {

@@ -84,6 +84,9 @@ export function WarrantyCertificate({
               value={registration.serial}
               monospace
             />
+            {registration.seriesName ? (
+              <CertificateField label="Series" value={registration.seriesName} />
+            ) : null}
             <CertificateField
               label="Installation Date"
               value={formatDate(registration.installation.installationDate)}

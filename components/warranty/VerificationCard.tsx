@@ -129,6 +129,9 @@ export function VerificationCard({ warrantyId }: { warrantyId: string }) {
             value={registration.serial}
             monospace
           />
+          {registration.seriesName ? (
+            <VerifyRow label="Series" value={registration.seriesName} />
+          ) : null}
           <VerifyRow
             label="Capacity"
             value={formatCapacity(

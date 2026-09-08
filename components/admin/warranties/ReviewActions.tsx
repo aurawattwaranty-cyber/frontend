@@ -28,6 +28,7 @@ type OpenDialog = "approve" | "correction" | "reject" | null;
 
 function getSeriesScopedModelOptions(
   models: ProductModel[] | null,
+  seriesName: string | undefined,
   referenceModelId: string,
   referenceModelName: string,
   referenceSerial: string,
@@ -53,12 +54,15 @@ function getSeriesScopedModelOptions(
         .sort((a, b) => b.name.length - a.name.length)[0]
     : undefined;
   const referenceModel = directReference ?? serialReference;
+  const selectedSeries = seriesName || referenceModel?.series;
 
-  if (!referenceModel?.series) {
+  if (!selectedSeries) {
     return activeModels;
   }
 
-  return activeModels.filter((model) => model.series === referenceModel.series);
+  return activeModels.filter(
+    (model) => model.series.trim().toLowerCase() === selectedSeries.trim().toLowerCase(),
+  );
 }
 
 export function ReviewActions({
@@ -101,17 +105,19 @@ export function ReviewActions({
 
   const modelSeries = useMemo(
     () =>
+      registration.seriesName ??
       models.data?.find(
         (model) =>
           (registration.modelId && model.id === registration.modelId) ||
           (registration.modelName && model.name === registration.modelName),
       )?.series ?? null,
-    [models.data, registration.modelId, registration.modelName],
+    [models.data, registration.seriesName, registration.modelId, registration.modelName],
   );
 
   const modelOptions = useMemo(() => {
     const scopedModels = getSeriesScopedModelOptions(
       models.data,
+      registration.seriesName,
       registration.modelId,
       registration.modelName,
       registration.serial,
@@ -119,6 +125,7 @@ export function ReviewActions({
     );
     const currentModelIsMissing =
       !!registration.modelName &&
+      !registration.seriesName &&
       !scopedModels.some((model) => model.name === registration.modelName);
 
     return [
@@ -132,6 +139,7 @@ export function ReviewActions({
     ];
   }, [
     models.data,
+    registration.seriesName,
     registration.modelId,
     registration.modelName,
     registration.serial,
@@ -142,6 +150,7 @@ export function ReviewActions({
     () => {
       const scopedModels = getSeriesScopedModelOptions(
         models.data,
+        registration.installation.batterySeriesName,
         "",
         registration.installation.batteryModel ?? "",
         registration.installation.batterySerial ?? "",
@@ -154,6 +163,7 @@ export function ReviewActions({
     },
     [
       models.data,
+      registration.installation.batterySeriesName,
       registration.installation.batteryModel,
       registration.installation.batterySerial,
     ],
@@ -352,7 +362,11 @@ export function ReviewActions({
           {registration.installation.batteryInstalled ? (
             <Select
               label="Battery model number"
-              hint="Select the exact model number shown on the battery label."
+              hint={
+                registration.installation.batterySeriesName
+                  ? `Showing only models from ${registration.installation.batterySeriesName}.`
+                  : "Select the exact model number shown on the battery label."
+              }
               value={batteryModel}
               onChange={(event) => {
                 setBatteryModel(event.target.value);

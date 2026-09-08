@@ -158,7 +158,9 @@ export function VerifiedSerialSummary({
           {serial.serial}
         </p>
         <p className="mt-0.5 text-[13px] text-ink-soft">
-          {serial.modelName || "Model will be assigned during warranty activation"}
+          {serial.seriesName
+            ? `Series: ${serial.seriesName}${serial.modelName ? ` · ${serial.modelName}` : ""}`
+            : serial.modelName || "Model will be assigned during warranty activation"}
         </p>
       </div>
       <Button variant="ghost" size="sm" onClick={onChange}>

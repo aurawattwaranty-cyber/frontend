@@ -3,14 +3,12 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type {
-  ProductModel,
   RegistrationDraft,
   SerialNumber,
   WarrantyPhoto,
   WarrantyRegistration,
 } from "@/lib/types";
 import { createWarrantyRegistration } from "@/lib/services/warranties";
-import { getProductModels } from "@/lib/services/products";
 import { useAsync, useMutation } from "@/lib/hooks/useAsync";
 import { useToast } from "@/components/ui/Toast";
 import { useCustomerExperience } from "@/lib/hooks/useCustomerExperience";
@@ -42,7 +40,6 @@ export function RegisterWizard() {
   const [photos, setPhotos] = useState<Record<string, WarrantyPhoto>>({});
   const [submitted, setSubmitted] = useState<WarrantyRegistration | null>(null);
 
-  const models = useAsync<ProductModel[]>(() => getProductModels(), []);
   const submit = useMutation(createWarrantyRegistration);
 
   const installationAddress = useMemo(() => {
@@ -54,14 +51,6 @@ export function RegisterWizard() {
       .filter((part) => part.trim())
       .join(", ");
   }, [details]);
-
-  const batteryModel = useMemo(
-    () =>
-      (models.data ?? []).find(
-        (model) => model.id === details.installation.batteryModelId,
-      ),
-    [models.data, details.installation.batteryModelId],
-  );
 
   const photoList = useMemo(() => Object.values(photos), [photos]);
 
@@ -87,9 +76,6 @@ export function RegisterWizard() {
         modelName: serial.modelName,
         capacityKw: serial.capacityKw,
         batteryInstalled: details.installation.batteryInstalled,
-        batteryModel: details.installation.batteryInstalled
-          ? batteryModel?.name
-          : undefined,
         batterySerial: details.installation.batteryInstalled
           ? details.installation.batterySerial
           : undefined,
@@ -179,7 +165,6 @@ export function RegisterWizard() {
             details={details}
             photos={photoList}
             installationAddress={installationAddress}
-            batteryModelName={batteryModel?.name}
             onEditSerial={() => goTo("verify")}
             onEditDetails={() => goTo("details")}
             onEditPhotos={() => goTo("photos")}

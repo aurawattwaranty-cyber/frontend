@@ -47,6 +47,7 @@ export function SuccessScreen({
               value={registration.serial}
               monospace
             />
+            <DetailRow label="Series" value={registration.seriesName || "—"} />
             <DetailRow label="Product" value={registration.modelName} />
             <DetailRow
               label="Submitted On"
