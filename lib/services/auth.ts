@@ -1,16 +1,12 @@
 import { apiRequest, registerApiErrorHandler } from "@/lib/api/client";
 import type { AdminUser } from "@/lib/types";
-import {
-  clearStoredSessionToken,
-  setStoredSessionToken,
-} from "@/lib/services/session-token";
+import { setCsrfToken } from "@/lib/services/csrf-token";
 
 /**
  * Admin session handling.
  *
- * The UI only ever asks this module whether a session exists, so moving to
- * httpOnly cookies + a real `/auth/login` endpoint is contained here. No
- * credentials or tokens are hard-coded into components.
+ * The signed JWT is an HttpOnly cookie; JavaScript never receives or persists
+ * it. This module only retains the non-sensitive, memory-only CSRF proof.
  */
 
 export interface LoginInput {
@@ -48,19 +44,20 @@ export function invalidateSession(): void {
   sessionRequestId += 1;
   sessionLoadPromise = null;
   cachedSession = null;
-  clearStoredSessionToken();
+  setCsrfToken(null);
   notify();
 }
 
 async function syncSessionFromApi(): Promise<void> {
   if (sessionLoadPromise) return sessionLoadPromise;
   const requestId = ++sessionRequestId;
-  sessionLoadPromise = apiRequest<{ user: AdminUser | null }>("/auth/session", {
+  sessionLoadPromise = apiRequest<{ user: AdminUser | null; csrfToken: string | null }>("/auth/session", {
     method: "GET",
   })
     .then((response) => {
       if (requestId !== sessionRequestId) return;
       if (response.user) {
+        setCsrfToken(response.csrfToken);
         setCachedSession(response.user);
         return;
       }
@@ -108,8 +105,8 @@ export function subscribeToSession(listener: () => void): () => void {
 export async function login(input: LoginInput): Promise<AdminUser> {
   const response = await apiRequest<{
     user: AdminUser;
-    token: string;
     expiresAt: string;
+    csrfToken: string;
   }>("/auth/login", {
     method: "POST",
     body: JSON.stringify({
@@ -119,7 +116,7 @@ export async function login(input: LoginInput): Promise<AdminUser> {
     }),
   });
   sessionRequestId += 1;
-  setStoredSessionToken(response.token);
+  setCsrfToken(response.csrfToken);
   setCachedSession(response.user);
   return response.user;
 }

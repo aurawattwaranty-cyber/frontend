@@ -1,5 +1,5 @@
 import { ServiceError } from "@/lib/services/errors";
-import { getStoredSessionToken } from "@/lib/services/session-token";
+import { getCsrfToken } from "@/lib/services/csrf-token";
 
 const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(
   /\/$/,
@@ -50,9 +50,9 @@ function buildRequestHeaders(init: RequestInit): HeadersInit {
     headers.set("Content-Type", "application/json");
   }
 
-  const sessionToken = getStoredSessionToken();
-  if (sessionToken && !headers.has("x-session-token")) {
-    headers.set("x-session-token", sessionToken);
+  const csrfToken = getCsrfToken();
+  if (csrfToken && !headers.has("x-csrf-token")) {
+    headers.set("x-csrf-token", csrfToken);
   }
 
   return headers;
