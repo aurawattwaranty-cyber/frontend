@@ -10,30 +10,6 @@ import { Alert, EmptyState, Skeleton } from "@/components/ui/Feedback";
 import { FileUploader } from "@/components/public/FileUploader";
 import { ArrowLeftIcon, ChevronRightIcon } from "@/components/icons";
 
-const DEFAULT_PHOTO_REQUIREMENTS: PhotoRequirement[] = [
-  {
-    id: "default-installation-overview",
-    label: "Installation overview",
-    instructions: "Upload a clear photo showing the installed Aurawatt equipment and its surroundings.",
-    required: true,
-    order: 1,
-  },
-  {
-    id: "default-product-label",
-    label: "Product label",
-    instructions: "Upload a clear photo of the product label showing the serial number.",
-    required: true,
-    order: 2,
-  },
-  {
-    id: "default-wiring-panel",
-    label: "Wiring and panel",
-    instructions: "Upload a clear photo of the wiring, connections and nearby electrical panel.",
-    required: true,
-    order: 3,
-  },
-];
-
 export function PhotosStep({
   photos,
   onPhotosChange,
@@ -51,13 +27,11 @@ export function PhotosStep({
     [],
   );
 
-  const list = useMemo(
-    () =>
-      requirements.data && requirements.data.length > 0
-        ? requirements.data
-        : DEFAULT_PHOTO_REQUIREMENTS,
-    [requirements.data],
-  );
+  // The API is the only source for this checklist, so it always matches what
+  // the super admin manages on Customer Fields. A local default list would
+  // render photo boxes admin cannot see, edit or reorder — the loading
+  // skeleton and the error alert below cover the not-yet-answered cases.
+  const list = useMemo(() => requirements.data ?? [], [requirements.data]);
   const missing = useMemo(
     () => list.filter((entry) => entry.required && !photos[entry.id]),
     [list, photos],
@@ -117,24 +91,32 @@ export function PhotosStep({
                 </Alert>
               ) : null}
 
-              {list.map((requirement) => (
-                <FileUploader
-                  key={requirement.id}
-                  requirement={requirement}
-                  photo={photos[requirement.id]}
-                  highlighted={
-                    showMissing && missing.some((entry) => entry.id === requirement.id)
-                  }
-                  onUploaded={(photo) =>
-                    onPhotosChange({ ...photos, [requirement.id]: photo })
-                  }
-                  onRemove={() => {
-                    const next = { ...photos };
-                    delete next[requirement.id];
-                    onPhotosChange(next);
-                  }}
+              {list.length === 0 ? (
+                <EmptyState
+                  title="No installation photos required"
+                  description="Continue to review your warranty registration."
+                  compact
                 />
-              ))}
+              ) : (
+                list.map((requirement) => (
+                  <FileUploader
+                    key={requirement.id}
+                    requirement={requirement}
+                    photo={photos[requirement.id]}
+                    highlighted={
+                      showMissing && missing.some((entry) => entry.id === requirement.id)
+                    }
+                    onUploaded={(photo) =>
+                      onPhotosChange({ ...photos, [requirement.id]: photo })
+                    }
+                    onRemove={() => {
+                      const next = { ...photos };
+                      delete next[requirement.id];
+                      onPhotosChange(next);
+                    }}
+                  />
+                ))
+              )}
             </>
           )}
         </CardBody>

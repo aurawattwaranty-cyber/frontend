@@ -24,9 +24,15 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Checkbox, Input, Select, Textarea } from "@/components/ui/Field";
 import { Alert, CardSkeleton, EmptyState } from "@/components/ui/Feedback";
-import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { getPhotoRequirements } from "@/lib/services/photo-requirements";
+import {
+  createPhotoRequirement,
+  deletePhotoRequirement,
+  getPhotoRequirements,
+  movePhotoRequirement,
+  updatePhotoRequirement,
+} from "@/lib/services/photo-requirements";
 import { Badge } from "@/components/ui/Badge";
 import {
   ArrowLeftIcon,
@@ -35,6 +41,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   ChevronRightIcon,
+  PencilIcon,
   PlusIcon,
   RefreshIcon,
   SlidersIcon,
@@ -93,6 +100,15 @@ export function CustomerFieldsView() {
   const [draft, setDraft] = useState<CustomerExperienceConfig | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [previewStep, setPreviewStep] = useState<0 | 1 | 2>(0);
+  const [photoFormOpen, setPhotoFormOpen] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState<PhotoRequirement | null>(null);
+  const [pendingPhotoDelete, setPendingPhotoDelete] = useState<PhotoRequirement | null>(null);
+  const [photoField, setPhotoField] = useState({
+    label: "",
+    instructions: "",
+    required: true,
+  });
   const [deletedFieldIds, setDeletedFieldIds] = useState<string[]>([]);
   const [newField, setNewField] = useState({
     label: "",
@@ -103,6 +119,10 @@ export function CustomerFieldsView() {
 
   const save = useMutation(saveCustomerExperience);
   const reset = useMutation(resetCustomerExperience);
+  const createPhoto = useMutation(createPhotoRequirement);
+  const updatePhoto = useMutation(updatePhotoRequirement);
+  const removePhoto = useMutation(deletePhotoRequirement);
+  const movePhoto = useMutation(movePhotoRequirement);
 
   // The editor works on a local copy so nothing is written until Save.
   useEffect(() => {
@@ -318,6 +338,51 @@ export function CustomerFieldsView() {
     setDeletedFieldIds((ids) => [...new Set([...ids, field.id])]);
   }
 
+  function openPhotoForm(requirement?: PhotoRequirement) {
+    setEditingPhoto(requirement ?? null);
+    setPhotoField(
+      requirement
+        ? {
+            label: requirement.label,
+            instructions: requirement.instructions,
+            required: requirement.required,
+          }
+        : { label: "", instructions: "", required: true },
+    );
+    createPhoto.clearError();
+    updatePhoto.clearError();
+    setPhotoFormOpen(true);
+  }
+
+  async function savePhotoField() {
+    if (!photoField.label.trim() || photoField.instructions.trim().length < 10) return;
+    const saved = editingPhoto
+      ? await updatePhoto.run(editingPhoto.id, photoField)
+      : await createPhoto.run(photoField);
+    if (!saved) return;
+    setPhotoFormOpen(false);
+    photoRequirements.refresh();
+    toast.success(
+      editingPhoto ? "Photo field updated" : "Photo field added",
+      "Customers see this change immediately.",
+    );
+  }
+
+  async function deletePhotoField() {
+    if (!pendingPhotoDelete) return;
+    const removed = await removePhoto.run(pendingPhotoDelete.id);
+    if (removed !== null) {
+      toast.success("Photo field deleted", "Customers will no longer be asked for it.");
+      setPendingPhotoDelete(null);
+      photoRequirements.refresh();
+    }
+  }
+
+  async function reorderPhotoField(id: string, direction: "up" | "down") {
+    const moved = await movePhoto.run(id, direction);
+    if (moved) photoRequirements.refresh();
+  }
+
   async function handleReset() {
     const result = await reset.run();
     if (result) {
@@ -345,6 +410,13 @@ export function CustomerFieldsView() {
               icon={<PlusIcon />}
             >
               Add custom field
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setPreviewStep(2)}
+              icon={<CameraIcon />}
+            >
+              Manage photo fields
             </Button>
             <Button
               variant="secondary"
@@ -381,6 +453,12 @@ export function CustomerFieldsView() {
         <CustomerJourneyPreview
           config={draft}
           photoRequirements={photoRequirements.data ?? []}
+          step={previewStep}
+          onStepChange={setPreviewStep}
+          onAddPhoto={() => openPhotoForm()}
+          onEditPhoto={openPhotoForm}
+          onDeletePhoto={setPendingPhotoDelete}
+          onMovePhoto={(id, direction) => void reorderPhotoField(id, direction)}
           onPatchField={patchField}
           onRemoveField={removeCustomField}
           onAddField={() => setAddOpen(true)}
@@ -785,6 +863,62 @@ export function CustomerFieldsView() {
       </Modal>
 
       <Modal
+        open={photoFormOpen}
+        onClose={() => setPhotoFormOpen(false)}
+        title={editingPhoto ? "Edit photo field" : "Add photo field"}
+        description="This card is shown in the customer Photos step immediately after saving."
+        busy={createPhoto.pending || updatePhoto.pending}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPhotoFormOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void savePhotoField()}
+              disabled={
+                !photoField.label.trim() || photoField.instructions.trim().length < 10
+              }
+              loading={createPhoto.pending || updatePhoto.pending}
+              loadingText="Saving…"
+            >
+              Save photo field
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          {createPhoto.error || updatePhoto.error ? (
+            <Alert tone="danger">{createPhoto.error ?? updatePhoto.error}</Alert>
+          ) : null}
+          <Input
+            label="Photo label"
+            value={photoField.label}
+            onChange={(event) =>
+              setPhotoField({ ...photoField, label: event.target.value })
+            }
+            placeholder="e.g. Product label"
+            required
+          />
+          <Textarea
+            label="Instructions for the customer"
+            value={photoField.instructions}
+            onChange={(event) =>
+              setPhotoField({ ...photoField, instructions: event.target.value })
+            }
+            rows={3}
+            required
+          />
+          <Checkbox
+            label="This photo is required for registration"
+            checked={photoField.required}
+            onChange={(event) =>
+              setPhotoField({ ...photoField, required: event.target.checked })
+            }
+          />
+        </div>
+      </Modal>
+
+      <Modal
         open={resetOpen}
         onClose={() => setResetOpen(false)}
         title="Clear customer configuration?"
@@ -811,6 +945,20 @@ export function CustomerFieldsView() {
           </Alert>
         ) : null}
       </Modal>
+
+      <ConfirmDialog
+        open={pendingPhotoDelete !== null}
+        onClose={() => setPendingPhotoDelete(null)}
+        onConfirm={deletePhotoField}
+        title="Delete this photo field?"
+        description={pendingPhotoDelete?.label}
+        confirmLabel="Delete photo field"
+        tone="danger"
+        loading={removePhoto.pending}
+      >
+        Customers will no longer be asked for this photo. Existing submitted
+        photos stay attached to their registrations.
+      </ConfirmDialog>
     </div>
   );
 }
@@ -842,17 +990,28 @@ function IconButton({
 function CustomerJourneyPreview({
   config,
   photoRequirements,
+  step,
+  onStepChange,
+  onAddPhoto,
+  onEditPhoto,
+  onDeletePhoto,
+  onMovePhoto,
   onPatchField,
   onRemoveField,
   onAddField,
 }: {
   config: CustomerExperienceConfig;
   photoRequirements: PhotoRequirement[];
+  step: 0 | 1 | 2;
+  onStepChange: (step: 0 | 1 | 2) => void;
+  onAddPhoto: () => void;
+  onEditPhoto: (requirement: PhotoRequirement) => void;
+  onDeletePhoto: (requirement: PhotoRequirement) => void;
+  onMovePhoto: (id: string, direction: "up" | "down") => void;
   onPatchField: (id: string, patch: Partial<CustomerFieldConfig>) => void;
   onRemoveField: (field: CustomerFieldConfig) => void;
   onAddField: () => void;
 }) {
-  const [step, setStep] = useState<0 | 1 | 2>(0);
   const steps = ["Verify", "Details", "Photos"];
   const sections = [...config.register.sections].sort((a, b) => a.order - b.order);
 
@@ -866,7 +1025,7 @@ function CustomerJourneyPreview({
               <div key={label} className="flex min-w-0 flex-1 items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setStep(index as 0 | 1 | 2)}
+                  onClick={() => onStepChange(index as 0 | 1 | 2)}
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
                     index === step
                       ? "border-brand-500 bg-brand-500 text-white"
@@ -904,7 +1063,15 @@ function CustomerJourneyPreview({
               />
             ) : null}
             {step === 2 ? (
-              <PreviewPhotosScreen requirements={photoRequirements} />
+              <>
+                <PreviewPhotosScreen
+                  requirements={photoRequirements}
+                  onAdd={onAddPhoto}
+                  onEdit={onEditPhoto}
+                  onDelete={onDeletePhoto}
+                  onMove={onMovePhoto}
+                />
+              </>
             ) : null}
 
             <div className="mt-5 flex justify-between gap-3">
@@ -912,7 +1079,7 @@ function CustomerJourneyPreview({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setStep((current) => (current - 1) as 0 | 1 | 2)}
+                  onClick={() => onStepChange((step - 1) as 0 | 1 | 2)}
                   icon={<ArrowLeftIcon />}
                 >
                   Back
@@ -921,7 +1088,7 @@ function CustomerJourneyPreview({
               <Button
                 size="sm"
                 onClick={() => {
-                  if (step < 2) setStep((current) => (current + 1) as 0 | 1 | 2);
+                  if (step < 2) onStepChange((step + 1) as 0 | 1 | 2);
                 }}
                 iconAfter={<ChevronRightIcon />}
               >
@@ -1073,41 +1240,81 @@ function PreviewDetailsScreen({
 
 function PreviewPhotosScreen({
   requirements,
+  onAdd,
+  onEdit,
+  onDelete,
+  onMove,
 }: {
   requirements: PhotoRequirement[];
+  onAdd: () => void;
+  onEdit: (requirement: PhotoRequirement) => void;
+  onDelete: (requirement: PhotoRequirement) => void;
+  onMove: (id: string, direction: "up" | "down") => void;
 }) {
+  const ordered = [...requirements].sort((a, b) => a.order - b.order);
   return (
     <Card className="shadow-none">
       <CardHeader
         title="Installation Photos"
         description="Our engineers review these photos before the warranty is activated."
         action={
-          <span className="text-xs font-medium text-muted">
-            0 / {requirements.filter((item) => item.required).length} required
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-muted">
+              0 / {requirements.filter((item) => item.required).length} required
+            </span>
+            <Button size="sm" onClick={onAdd} icon={<PlusIcon />}>
+              Add photo
+            </Button>
+          </div>
         }
       />
       <CardBody className="flex flex-col gap-3">
-        {[...requirements]
-          .sort((a, b) => a.order - b.order)
-          .map((requirement) => (
-            <div key={requirement.id} className="rounded-xl border border-line p-3">
+        {ordered.map((requirement, index) => (
+          <div key={requirement.id} className="rounded-xl border border-line p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-ink">{requirement.label}</p>
                 {requirement.required ? <Badge tone="warning">Required</Badge> : null}
               </div>
-              <p className="mt-1 text-xs text-muted">{requirement.instructions}</p>
-              <div className="mt-3 flex min-h-24 flex-col items-center justify-center rounded-lg border border-dashed border-line-strong bg-canvas-soft text-center">
-                <CameraIcon className="text-muted" />
-                <p className="mt-1 text-xs text-muted">Drag a photo here, or Browse files</p>
-                <p className="mt-1 text-[10px] text-faint">JPG, PNG or WEBP · up to 10.0 MB</p>
+              <div className="flex items-center gap-1">
+                <IconButton
+                  label={`Move ${requirement.label} up`}
+                  disabled={index === 0}
+                  onClick={() => onMove(requirement.id, "up")}
+                >
+                  <ChevronUpIcon />
+                </IconButton>
+                <IconButton
+                  label={`Move ${requirement.label} down`}
+                  disabled={index === ordered.length - 1}
+                  onClick={() => onMove(requirement.id, "down")}
+                >
+                  <ChevronDownIcon />
+                </IconButton>
+                <IconButton label={`Edit ${requirement.label}`} onClick={() => onEdit(requirement)}>
+                  <PencilIcon />
+                </IconButton>
+                <IconButton label={`Delete ${requirement.label}`} onClick={() => onDelete(requirement)}>
+                  <TrashIcon />
+                </IconButton>
               </div>
             </div>
-          ))}
+            <p className="mt-1 text-xs text-muted">{requirement.instructions}</p>
+            <div className="mt-3 flex min-h-24 flex-col items-center justify-center rounded-lg border border-dashed border-line-strong bg-canvas-soft text-center">
+              <CameraIcon className="text-muted" />
+              <p className="mt-1 text-xs text-muted">Drag a photo here, or Browse files</p>
+              <p className="mt-1 text-[10px] text-faint">JPG, PNG or WEBP · up to 10.0 MB</p>
+            </div>
+          </div>
+        ))}
         {requirements.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line-strong p-5 text-center text-xs text-muted">
-            No photo requirements configured.
-          </p>
+          <EmptyState
+            icon={<CameraIcon />}
+            title="No photo requirements configured"
+            description="Add a photo field to show the exact same card to customers."
+            action={<Button size="sm" onClick={onAdd} icon={<PlusIcon />}>Add photo field</Button>}
+            compact
+          />
         ) : null}
       </CardBody>
     </Card>

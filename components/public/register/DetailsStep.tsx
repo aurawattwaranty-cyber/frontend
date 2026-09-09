@@ -102,7 +102,10 @@ export function DetailsStep({
   const customFields = useMemo(
     () =>
       (experience?.register.fields ?? [])
-        .filter((entry) => entry.id.startsWith("custom."))
+        .filter(
+          (entry) =>
+            entry.id.startsWith("custom.") && (entry.visible || entry.locked),
+        )
         .sort((a, b) => a.order - b.order),
     [experience],
   );

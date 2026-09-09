@@ -29,7 +29,14 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { label: "", instructions: "", required: true };
 
-export function PhotoRequirementsView() {
+export function PhotoRequirementsView({
+  embedded = false,
+  onChanged,
+}: {
+  /** Lets Customer Fields reuse the exact same CRUD, without a second source of truth. */
+  embedded?: boolean;
+  onChanged?: () => void;
+}) {
   const toast = useToast();
   const requirements = useAsync<PhotoRequirement[]>(
     () => getPhotoRequirements(),
@@ -55,6 +62,11 @@ export function PhotoRequirementsView() {
   const saving = create.pending || update.pending;
 
   const list = requirements.data ?? [];
+
+  function refreshRequirements() {
+    requirements.refresh();
+    onChanged?.();
+  }
 
   /** Both entry points fully seed the form, so closing needs no cleanup. */
   function openCreate() {
@@ -100,7 +112,7 @@ export function PhotoRequirementsView() {
         `${saved.label} saved.`,
       );
       setFormOpen(false);
-      requirements.refresh();
+      refreshRequirements();
     }
   }
 
@@ -110,13 +122,13 @@ export function PhotoRequirementsView() {
     if (result !== null) {
       toast.success("Requirement removed", `${pendingDelete.label} deleted.`);
       setPendingDelete(null);
-      requirements.refresh();
+      refreshRequirements();
     }
   }
 
   async function reorder(id: string, direction: "up" | "down") {
     const result = await move.run(id, direction);
-    if (result) requirements.refresh();
+    if (result) refreshRequirements();
   }
 
   async function handleDropOn(targetId: string) {
@@ -136,22 +148,38 @@ export function PhotoRequirementsView() {
     for (let step = 0; step < steps; step += 1) {
       await move.run(sourceId, direction);
     }
-    requirements.refresh();
+    refreshRequirements();
   }
 
   return (
     <>
-      <AdminPageHeader
-        title="Photo Requirements"
-        description="Configure the evidence photos required during warranty registration."
-        actions={
-          formOpen ? null : (
-            <Button onClick={openCreate} icon={<PlusIcon />}>
-              Add Requirement
-            </Button>
-          )
-        }
-      />
+      {embedded ? null : (
+        <AdminPageHeader
+          title="Photo Requirements"
+          description="Configure the evidence photos required during warranty registration."
+          actions={
+            formOpen ? null : (
+              <Button onClick={openCreate} icon={<PlusIcon />}>
+                Add Requirement
+              </Button>
+            )
+          }
+        />
+      )}
+
+      {embedded && !formOpen ? (
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-[16px] font-semibold text-ink">Installation photos</h2>
+            <p className="mt-0.5 text-[13px] text-muted">
+              These cards are shown to customers in the Photos step.
+            </p>
+          </div>
+          <Button onClick={openCreate} icon={<PlusIcon />}>
+            Add photo field
+          </Button>
+        </div>
+      ) : null}
 
       {formOpen ? (
         <Card className="mb-4 border-brand-200 ring-1 ring-brand-100">
