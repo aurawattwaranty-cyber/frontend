@@ -10,11 +10,11 @@ import {
 import { getPhotoRequirements } from "@/lib/services/photo-requirements";
 import { getProductModels } from "@/lib/services/products";
 import { useAsync, useMutation } from "@/lib/hooks/useAsync";
-import { calculateWarrantyPeriod, toIsoDate } from "@/lib/warranty/dates";
-import { formatDate } from "@/lib/utils/format";
+import { calculateWarrantyPeriod } from "@/lib/warranty/dates";
+import { formatDate, formatWarrantyTerm } from "@/lib/utils/format";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { Checkbox, Input, Select, Textarea } from "@/components/ui/Field";
+import { Checkbox, Select, Textarea } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Feedback";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -88,10 +88,6 @@ export function ReviewActions({
   const [batteryModel, setBatteryModel] = useState(
     registration.installation.batteryModel ?? "",
   );
-  const [startDate, setStartDate] = useState(
-    registration.installation.installationDate,
-  );
-  const [durationMonths, setDurationMonths] = useState<string>("");
   const [approveNote, setApproveNote] = useState("");
 
   const [correctionMessage, setCorrectionMessage] = useState("");
@@ -169,16 +165,26 @@ export function ReviewActions({
     ],
   );
 
-  const effectiveMonths = durationMonths
-    ? Number(durationMonths)
-    : 60;
+  /**
+   * Coverage is never typed in during review: it starts on the installation
+   * date the customer registered and runs for the term the selected model
+   * carries in the catalogue, which is maintained on the Series and Serial No.
+   * Uploader page.
+   */
+  const selectedModel = useMemo(
+    () => models.data?.find((model) => model.name === modelName) ?? null,
+    [models.data, modelName],
+  );
+
+  const startDate = registration.installation.installationDate;
+  const warrantyMonths = selectedModel?.warrantyMonths ?? 0;
 
   const preview = useMemo(
     () =>
-      startDate && effectiveMonths > 0
-        ? calculateWarrantyPeriod(startDate, effectiveMonths)
+      startDate && warrantyMonths > 0
+        ? calculateWarrantyPeriod(startDate, warrantyMonths)
         : null,
-    [startDate, effectiveMonths],
+    [startDate, warrantyMonths],
   );
 
   function closeDialog() {
@@ -198,13 +204,17 @@ export function ReviewActions({
       setFieldError("Select the battery model number shown on the battery label.");
       return;
     }
+    if (selectedModel && warrantyMonths <= 0) {
+      setFieldError(
+        `No warranty term is set for ${selectedModel.name}. Set it on the Series and Serial No. Uploader page first.`,
+      );
+      return;
+    }
     const updated = await approve.run(registration.id, {
       modelName: modelName.trim(),
       batteryModel: registration.installation.batteryInstalled
         ? batteryModel.trim()
         : undefined,
-      startDate,
-      durationMonths: durationMonths ? Number(durationMonths) : undefined,
       note: approveNote.trim() || undefined,
     });
     if (updated) {
@@ -318,8 +328,8 @@ export function ReviewActions({
         title="Approve and activate warranty"
         description={
           modelSeries
-            ? `Only ${modelSeries} models are shown here. Confirm the exact model from the side label and the warranty period will be calculated from the installation date.`
-            : "Confirm the exact model from the side label and the warranty period will be calculated from the installation date."
+            ? `Only ${modelSeries} models are shown here. Confirm the exact model from the side label — the coverage window follows that model's warranty term.`
+            : "Confirm the exact model from the side label — the coverage window follows that model's warranty term."
         }
         busy={approve.pending}
         footer={
@@ -382,40 +392,29 @@ export function ReviewActions({
             />
           ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Warranty start date"
-              type="date"
-              value={startDate}
-              max={toIsoDate(new Date())}
-              onChange={(event) => setStartDate(event.target.value)}
-              hint="Defaults to the installation date."
-            />
-            <Input
-              label="Warranty term (months)"
-              type="number"
-              min={1}
-              max={360}
-              value={durationMonths}
-              onChange={(event) => setDurationMonths(event.target.value)}
-              placeholder="60"
-              hint="Leave blank to use the standard 60-month term."
-            />
-          </div>
-
           {preview ? (
             <div className="rounded-lg border border-success-line bg-success-bg px-4 py-3">
               <p className="text-[12px] font-medium tracking-wide text-success-fg uppercase">
-                Calculated warranty period
+                Warranty period
               </p>
               <p className="mt-1 text-[13px] font-semibold text-ink">
                 {formatDate(preview.start)} → {formatDate(preview.end)}
               </p>
               <p className="mt-0.5 text-[12px] text-ink-soft">
-                {preview.durationMonths} month term
+                {formatWarrantyTerm(preview.durationMonths)} from the installation
+                date, as configured for {selectedModel?.name}.
               </p>
             </div>
-          ) : null}
+          ) : selectedModel ? (
+            <Alert tone="warning" title="No warranty term configured">
+              {selectedModel.name} has no warranty term set. Add one on the Series
+              and Serial No. Uploader page, then approve this registration.
+            </Alert>
+          ) : (
+            <p className="text-[13px] text-muted">
+              Select the model to see the warranty period that will be applied.
+            </p>
+          )}
 
           <Textarea
             label="Internal note"

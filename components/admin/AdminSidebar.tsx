@@ -95,13 +95,13 @@ export function AdminSidebar({
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] leading-snug font-medium transition-colors",
                     active
                       ? "bg-brand-500 text-white"
                       : "text-ink-soft hover:bg-canvas hover:text-ink",
                   )}
                 >
-                  <span className="text-base">{item.icon}</span>
+                  <span className="shrink-0 text-base">{item.icon}</span>
                   {item.label}
                 </Link>
               </li>

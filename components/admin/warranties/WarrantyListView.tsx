@@ -153,7 +153,7 @@ export function WarrantyListView() {
       />
 
       <Card className="mb-5">
-        <CardBody className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <CardBody className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -177,13 +177,13 @@ export function WarrantyListView() {
             options={modelOptions}
             disabled={models.loading}
           />
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-2 sm:col-span-2">
             <Input
               type="date"
               value={from}
               onChange={(event) => setFrom(event.target.value)}
               aria-label="Submitted from"
-              containerClassName="flex-1"
+              containerClassName="min-w-0 flex-1"
               max={to || undefined}
             />
             <span className="pb-2.5 text-[13px] text-muted">to</span>
@@ -192,12 +192,12 @@ export function WarrantyListView() {
               value={to}
               onChange={(event) => setTo(event.target.value)}
               aria-label="Submitted to"
-              containerClassName="flex-1"
+              containerClassName="min-w-0 flex-1"
               min={from || undefined}
             />
           </div>
           {filtersActive ? (
-            <div className="lg:col-span-4">
+            <div className="sm:col-span-2 lg:col-span-5">
               <Button variant="ghost" size="sm" onClick={resetFilters}>
                 Reset filters
               </Button>
@@ -235,7 +235,7 @@ export function WarrantyListView() {
         ) : (
           <>
             <TableScroll className="hidden md:block">
-              <Table className="min-w-[900px]">
+              <Table className="min-w-[1040px]">
                 <THead>
                   <TR>
                     <SortableTH
@@ -269,10 +269,10 @@ export function WarrantyListView() {
                 <TBody>
                   {rows.map((registration) => (
                     <TR key={registration.id}>
-                      <TD className="font-medium text-ink">
+                      <TD className="font-medium whitespace-nowrap text-ink">
                         #{registration.id}
                       </TD>
-                      <TD className="font-mono text-[12px]">
+                      <TD className="font-mono text-[12px] whitespace-nowrap">
                         {registration.serial}
                       </TD>
                       <TD>{registration.customer.fullName}</TD>
@@ -281,7 +281,7 @@ export function WarrantyListView() {
                           ? "Battery"
                           : "Hybrid Inverter"}
                       </TD>
-                      <TD>
+                      <TD className="whitespace-nowrap">
                         <span className="block">{registration.modelName}</span>
                         <span className="block text-[12px] text-muted">
                           {formatCapacity(

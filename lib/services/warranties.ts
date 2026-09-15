@@ -119,15 +119,16 @@ export async function getRecentRegistrations(
   return response.items;
 }
 
+/**
+ * The coverage window is not entered here: the server starts it on the
+ * registered installation date and runs it for the confirmed model's
+ * catalogue term.
+ */
 export interface ApproveWarrantyInput {
   /** Free-text model number confirmed by the admin during verification. */
   modelName: string;
   /** Battery model number, required when the customer registered a battery. */
   batteryModel?: string;
-  /** Coverage start — defaults to the installation date. */
-  startDate?: string;
-  /** Overrides the model's standard term when set. */
-  durationMonths?: number;
   note?: string;
 }
 

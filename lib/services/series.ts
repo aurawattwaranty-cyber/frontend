@@ -1,11 +1,21 @@
 import { apiRequest } from "@/lib/api/client";
 import { notifyApiRevision } from "@/lib/api/revision";
-import type { ProductSeries, ProductType, SerialImportFile } from "@/lib/types";
+import type {
+  ProductModel,
+  ProductSeries,
+  ProductType,
+  SerialImportFile,
+  SeriesWithModels,
+} from "@/lib/types";
 
-export async function getSeries(): Promise<{
-  series: ProductSeries[];
+export interface SeriesOverview {
+  series: SeriesWithModels[];
   files: SerialImportFile[];
-}> {
+  /** Catalogue models with no uploaded series of the same name. */
+  unmatchedModels: ProductModel[];
+}
+
+export async function getSeries(): Promise<SeriesOverview> {
   return apiRequest("/series");
 }
 

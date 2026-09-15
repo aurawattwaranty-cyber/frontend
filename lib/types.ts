@@ -43,6 +43,11 @@ export interface ProductSeries {
   createdAt: string;
 }
 
+/** A series joined to the catalogue models that carry its warranty terms. */
+export interface SeriesWithModels extends ProductSeries {
+  models: ProductModel[];
+}
+
 export interface SerialImportFile {
   id: string;
   seriesId: string;

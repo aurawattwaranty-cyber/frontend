@@ -51,6 +51,19 @@ export function formatCapacity(capacityKw: number, productType?: string): string
   return `${capacityKw} ${unit}`;
 }
 
+/**
+ * Warranty terms are stored in months but the catalogue quotes whole years,
+ * so a clean multiple of 12 reads back as years.
+ */
+export function formatWarrantyTerm(months?: number): string {
+  if (!months || !Number.isFinite(months) || months <= 0) return "Not set";
+  if (months % 12 === 0) {
+    const years = months / 12;
+    return `${years} year${years === 1 ? "" : "s"}`;
+  }
+  return `${months} month${months === 1 ? "" : "s"}`;
+}
+
 export function formatAddress(parts: {
   address: string;
   city: string;

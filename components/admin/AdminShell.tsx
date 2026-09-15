@@ -146,10 +146,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </header>
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto w-full max-w-5xl">{children}</div>
+          <div className="mx-auto w-full max-w-7xl">{children}</div>
 
           {canResetData ? (
-            <div className="mx-auto mt-10 flex w-full max-w-5xl justify-end">
+            <div className="mx-auto mt-10 flex w-full max-w-7xl justify-end">
               <Button
                 variant="ghost"
                 size="sm"
