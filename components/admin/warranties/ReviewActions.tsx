@@ -187,6 +187,22 @@ export function ReviewActions({
     [startDate, warrantyMonths],
   );
 
+  // The battery is covered for its own term, which is usually longer.
+  const selectedBattery = useMemo(
+    () => models.data?.find((model) => model.name === batteryModel) ?? null,
+    [models.data, batteryModel],
+  );
+
+  const batteryPreview = useMemo(
+    () =>
+      registration.installation.batteryInstalled &&
+      startDate &&
+      (selectedBattery?.warrantyMonths ?? 0) > 0
+        ? calculateWarrantyPeriod(startDate, selectedBattery!.warrantyMonths)
+        : null,
+    [registration.installation.batteryInstalled, startDate, selectedBattery],
+  );
+
   function closeDialog() {
     setDialog(null);
     setFieldError(undefined);
@@ -202,6 +218,16 @@ export function ReviewActions({
     }
     if (registration.installation.batteryInstalled && !batteryModel.trim()) {
       setFieldError("Select the battery model number shown on the battery label.");
+      return;
+    }
+    if (
+      registration.installation.batteryInstalled &&
+      selectedBattery &&
+      (selectedBattery.warrantyMonths ?? 0) <= 0
+    ) {
+      setFieldError(
+        `No warranty period is set for ${selectedBattery.name}. Set it on the Series and Serial No. Uploader page first.`,
+      );
       return;
     }
     if (selectedModel && warrantyMonths <= 0) {
@@ -393,17 +419,48 @@ export function ReviewActions({
           ) : null}
 
           {preview ? (
-            <div className="rounded-lg border border-success-line bg-success-bg px-4 py-3">
-              <p className="text-[12px] font-medium tracking-wide text-success-fg uppercase">
-                Warranty period
-              </p>
-              <p className="mt-1 text-[13px] font-semibold text-ink">
-                {formatDate(preview.start)} → {formatDate(preview.end)}
-              </p>
-              <p className="mt-0.5 text-[12px] text-ink-soft">
-                {formatWarrantyTerm(preview.durationMonths)} from the installation
-                date, as configured for {selectedModel?.name}.
-              </p>
+            <div className="flex flex-col gap-2">
+              <div className="rounded-lg border border-success-line bg-success-bg px-4 py-3">
+                <p className="text-[12px] font-medium tracking-wide text-success-fg uppercase">
+                  {registration.installation.batteryInstalled
+                    ? "Inverter warranty period"
+                    : "Warranty period"}
+                </p>
+                <p className="mt-1 text-[13px] font-semibold text-ink">
+                  {formatDate(preview.start)} → {formatDate(preview.end)}
+                </p>
+                <p className="mt-0.5 text-[12px] text-ink-soft">
+                  {formatWarrantyTerm(preview.durationMonths)} from the installation
+                  date, as configured for {selectedModel?.name}.
+                </p>
+              </div>
+
+              {registration.installation.batteryInstalled ? (
+                batteryPreview ? (
+                  <div className="rounded-lg border border-success-line bg-success-bg px-4 py-3">
+                    <p className="text-[12px] font-medium tracking-wide text-success-fg uppercase">
+                      Battery warranty period
+                    </p>
+                    <p className="mt-1 text-[13px] font-semibold text-ink">
+                      {formatDate(batteryPreview.start)} →{" "}
+                      {formatDate(batteryPreview.end)}
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-ink-soft">
+                      {formatWarrantyTerm(batteryPreview.durationMonths)} from the
+                      installation date, as configured for {selectedBattery?.name}.
+                    </p>
+                  </div>
+                ) : selectedBattery ? (
+                  <Alert tone="warning" title="No battery warranty term">
+                    {selectedBattery.name} has no warranty period set. Add one on
+                    the Series and Serial No. Uploader page before approving.
+                  </Alert>
+                ) : (
+                  <p className="text-[13px] text-muted">
+                    Select the battery model to see its warranty period.
+                  </p>
+                )
+              ) : null}
             </div>
           ) : selectedModel ? (
             <Alert tone="warning" title="No warranty term configured">

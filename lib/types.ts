@@ -153,6 +153,10 @@ export interface WarrantyRegistration {
   warrantyStart?: string;
   warrantyEnd?: string;
   warrantyMonths?: number;
+  /** The battery's own cover, which can run longer than the inverter's. */
+  batteryWarrantyStart?: string;
+  batteryWarrantyEnd?: string;
+  batteryWarrantyMonths?: number;
   history: WarrantyEvent[];
 }
 

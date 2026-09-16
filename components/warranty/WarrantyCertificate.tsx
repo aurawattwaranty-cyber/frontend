@@ -1,7 +1,7 @@
 "use client";
 
 import type { WarrantyRegistration } from "@/lib/types";
-import { formatCapacity, formatDate } from "@/lib/utils/format";
+import { formatCapacity, formatDate, formatWarrantyTerm } from "@/lib/utils/format";
 import { verificationUrl } from "@/lib/services/certificate";
 import { WARRANTY_STATUS_META } from "@/components/ui/Badge";
 import { Logo } from "@/components/Logo";
@@ -92,23 +92,56 @@ export function WarrantyCertificate({
               value={formatDate(registration.installation.installationDate)}
             />
             <CertificateField
-              label="Warranty Start"
+              label={
+                registration.installation.batteryInstalled
+                  ? "Inverter Warranty Start"
+                  : "Warranty Start"
+              }
               value={formatDate(registration.warrantyStart)}
             />
             <CertificateField
-              label="Warranty End"
-              value={formatDate(registration.warrantyEnd)}
+              label={
+                registration.installation.batteryInstalled
+                  ? "Inverter Warranty End"
+                  : "Warranty End"
+              }
+              value={
+                registration.warrantyMonths
+                  ? `${formatDate(registration.warrantyEnd)} · ${formatWarrantyTerm(registration.warrantyMonths)}`
+                  : formatDate(registration.warrantyEnd)
+              }
             />
             {registration.installation.batteryInstalled ? (
-              <CertificateField
-                label="Battery System"
-                value={`${registration.installation.batteryModel ?? "—"}${
-                  registration.installation.batterySerial
-                    ? ` · ${registration.installation.batterySerial}`
-                    : ""
-                }`}
-                className="sm:col-span-2"
-              />
+              <>
+                <CertificateField
+                  label="Battery System"
+                  value={`${registration.installation.batteryModel ?? "—"}${
+                    registration.installation.batterySerial
+                      ? ` · ${registration.installation.batterySerial}`
+                      : ""
+                  }`}
+                  className="sm:col-span-2"
+                />
+                {/* The battery is warranted separately and usually for longer. */}
+                <CertificateField
+                  label="Battery Warranty Start"
+                  value={formatDate(
+                    registration.batteryWarrantyStart ?? registration.warrantyStart,
+                  )}
+                />
+                <CertificateField
+                  label="Battery Warranty End"
+                  value={
+                    registration.batteryWarrantyEnd
+                      ? `${formatDate(registration.batteryWarrantyEnd)}${
+                          registration.batteryWarrantyMonths
+                            ? ` · ${formatWarrantyTerm(registration.batteryWarrantyMonths)}`
+                            : ""
+                        }`
+                      : "—"
+                  }
+                />
+              </>
             ) : null}
             <CertificateField
               label="Installed By"
