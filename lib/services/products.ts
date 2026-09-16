@@ -62,3 +62,9 @@ export async function updateProductModel(
   notifyApiRevision();
   return response.item;
 }
+
+export async function deleteProductModel(id: string): Promise<boolean> {
+  await apiRequest<void>(`/models/${encodeURIComponent(id)}`, { method: "DELETE" });
+  notifyApiRevision();
+  return true;
+}

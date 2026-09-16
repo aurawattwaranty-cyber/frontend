@@ -3,8 +3,14 @@
 import { useState } from "react";
 import type { ProductModel, ProductSeries, ProductType } from "@/lib/types";
 import type { SeriesOverview } from "@/lib/services/series";
-import { createSeries, deleteSeries, getSeries } from "@/lib/services/series";
-import { updateProductModel } from "@/lib/services/products";
+import {
+  adoptOrphanModels,
+  createSeries,
+  createSeriesModel,
+  deleteSeries,
+  getSeries,
+} from "@/lib/services/series";
+import { deleteProductModel, updateProductModel } from "@/lib/services/products";
 import { useAsync, useMutation } from "@/lib/hooks/useAsync";
 import { formatCapacity, formatDate, formatWarrantyTerm } from "@/lib/utils/format";
 import { Alert, EmptyState, TableSkeleton } from "@/components/ui/Feedback";
@@ -18,11 +24,12 @@ import { ConfirmDialog } from "@/components/ui/Modal";
 import { TrashIcon } from "@/components/icons";
 
 /* ------------------------------------------------------------------ *
- * Warranty terms
+ * Series → Model → Warranty period
  *
- * The term a model carries here is the term an activation applies — the
- * reviewer never types a coverage window during approval, so this is the
- * single place a warranty length is set.
+ * Models live under a series and each carries its own term, because two
+ * models in one series can be covered for different lengths. This is the only
+ * place a term is set — a reviewer never types a coverage window when
+ * activating a claim.
  * ------------------------------------------------------------------ */
 
 function summariseTerms(models: ProductModel[]): string {
@@ -37,44 +44,131 @@ function summariseTerms(models: ProductModel[]): string {
     : `Warranty ${formatWarrantyTerm(min)}–${formatWarrantyTerm(max)}`;
 }
 
-function WarrantyTermList({
+function AddModelRow({
+  seriesId,
+  onAdded,
+}: {
+  seriesId: string;
+  onAdded: () => Promise<void> | void;
+}) {
+  const toast = useToast();
+  const create = useMutation(createSeriesModel);
+  const [name, setName] = useState("");
+  const [capacity, setCapacity] = useState("");
+  const [months, setMonths] = useState("");
+
+  const ready =
+    name.trim().length > 0 && Number(capacity) > 0 && Number(months) >= 1;
+
+  async function handleAdd() {
+    if (!ready) return;
+    const created = await create.run(seriesId, {
+      name: name.trim(),
+      capacityKw: Number(capacity),
+      warrantyMonths: Math.round(Number(months)),
+    });
+    if (created) {
+      setName("");
+      setCapacity("");
+      setMonths("");
+      await onAdded();
+      toast.success(
+        "Model added",
+        `${created.name} carries a ${formatWarrantyTerm(created.warrantyMonths)} warranty.`,
+      );
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border border-dashed border-line-strong p-3">
+      {create.error ? (
+        <Alert tone="danger" className="mb-3">
+          {create.error}
+        </Alert>
+      ) : null}
+      <div className="flex flex-wrap items-end gap-2">
+        <Input
+          label="Model number"
+          value={name}
+          onChange={(event) => {
+            create.clearError();
+            setName(event.target.value);
+          }}
+          placeholder="e.g. AW-SP-5000"
+          containerClassName="min-w-[200px] flex-1"
+        />
+        <Input
+          label="Capacity"
+          type="number"
+          min={0}
+          step="0.01"
+          value={capacity}
+          onChange={(event) => setCapacity(event.target.value)}
+          placeholder="5"
+          trailing={<span className="pr-2 text-xs text-muted">kW</span>}
+          className="pr-10"
+          containerClassName="w-[130px]"
+        />
+        <Input
+          label="Warranty period"
+          type="number"
+          min={1}
+          max={600}
+          value={months}
+          onChange={(event) => setMonths(event.target.value)}
+          placeholder="60"
+          trailing={<span className="pr-2 text-xs text-muted">months</span>}
+          className="pr-16"
+          containerClassName="w-[170px]"
+        />
+        <Button
+          size="sm"
+          icon={<PlusIcon />}
+          disabled={!ready}
+          loading={create.pending}
+          onClick={() => void handleAdd()}
+        >
+          Add Model
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SeriesModelList({
+  seriesId,
   models,
   showSeries,
-  onSaved,
+  onChanged,
 }: {
+  /** Absent for catalogue models that sit outside every uploaded series. */
+  seriesId?: string;
   models: ProductModel[];
   showSeries?: boolean;
-  onSaved: () => Promise<void> | void;
+  onChanged: () => Promise<void> | void;
 }) {
   const toast = useToast();
   const update = useMutation(updateProductModel);
+  const remove = useMutation(deleteProductModel);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [savingId, setSavingId] = useState<string | null>(null);
-
-  if (models.length === 0) {
-    return (
-      <p className="text-[13px] text-muted">
-        No catalogue models are named after this series yet, so there is no
-        warranty term to set here.
-      </p>
-    );
-  }
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProductModel | null>(null);
 
   async function handleSave(model: ProductModel) {
     const months = Number(drafts[model.id]);
     if (!Number.isFinite(months) || months < 1) return;
-    setSavingId(model.id);
+    setBusyId(model.id);
     const saved = await update.run(model.id, { warrantyMonths: Math.round(months) });
-    setSavingId(null);
+    setBusyId(null);
     if (saved) {
       setDrafts((current) => {
         const next = { ...current };
         delete next[model.id];
         return next;
       });
-      await onSaved();
+      await onChanged();
       toast.success(
-        "Warranty term updated",
+        "Warranty period updated",
         `${saved.name} now carries a ${formatWarrantyTerm(saved.warrantyMonths)} warranty.`,
       );
     }
@@ -87,58 +181,104 @@ function WarrantyTermList({
           {update.error}
         </Alert>
       ) : null}
-      <ul className="divide-y divide-line rounded-lg border border-line">
-        {models.map((model) => {
-          const draft = drafts[model.id];
-          const dirty = draft !== undefined && Number(draft) !== model.warrantyMonths;
-          const value = draft ?? String(model.warrantyMonths || "");
-          return (
-            <li
-              key={model.id}
-              className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5"
-            >
-              <div className="min-w-0">
-                <p className="text-[13px] font-medium text-ink">{model.name}</p>
-                <p className="text-xs text-muted">
-                  {showSeries ? `${model.series} · ` : ""}
-                  {formatCapacity(model.capacityKw, model.productType)} ·{" "}
-                  {formatWarrantyTerm(model.warrantyMonths)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  aria-label={`Warranty term in months for ${model.name}`}
-                  type="number"
-                  min={1}
-                  max={600}
-                  value={value}
-                  onChange={(event) => {
-                    update.clearError();
-                    setDrafts((current) => ({
-                      ...current,
-                      [model.id]: event.target.value,
-                    }));
-                  }}
-                  trailing={
-                    <span className="pr-2 text-xs text-muted">months</span>
-                  }
-                  className="pr-16"
-                  containerClassName="w-[170px]"
-                />
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={!dirty}
-                  loading={savingId === model.id}
-                  onClick={() => void handleSave(model)}
-                >
-                  Save
-                </Button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+
+      {models.length === 0 ? (
+        <p className="text-[13px] text-muted">
+          No models yet. Add the models this series covers, each with its own
+          warranty period.
+        </p>
+      ) : (
+        <ul className="divide-y divide-line rounded-lg border border-line">
+          {models.map((model) => {
+            const draft = drafts[model.id];
+            const dirty =
+              draft !== undefined && Number(draft) !== model.warrantyMonths;
+            const value = draft ?? String(model.warrantyMonths || "");
+            return (
+              <li
+                key={model.id}
+                className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-ink">{model.name}</p>
+                  <p className="text-xs text-muted">
+                    {showSeries ? `${model.series} · ` : ""}
+                    {formatCapacity(model.capacityKw, model.productType)} ·{" "}
+                    {formatWarrantyTerm(model.warrantyMonths)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    aria-label={`Warranty period in months for ${model.name}`}
+                    type="number"
+                    min={1}
+                    max={600}
+                    value={value}
+                    onChange={(event) => {
+                      update.clearError();
+                      setDrafts((current) => ({
+                        ...current,
+                        [model.id]: event.target.value,
+                      }));
+                    }}
+                    trailing={
+                      <span className="pr-2 text-xs text-muted">months</span>
+                    }
+                    className="pr-16"
+                    containerClassName="w-[170px]"
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={!dirty}
+                    loading={busyId === model.id}
+                    onClick={() => void handleSave(model)}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Delete ${model.name}`}
+                    icon={<TrashIcon />}
+                    className="text-danger-fg"
+                    onClick={() => {
+                      remove.clearError();
+                      setDeleteTarget(model);
+                    }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {seriesId ? <AddModelRow seriesId={seriesId} onAdded={onChanged} /> : null}
+
+      {deleteTarget ? (
+        <ConfirmDialog
+          open
+          onClose={() => {
+            if (!remove.pending) setDeleteTarget(null);
+          }}
+          onConfirm={async () => {
+            const deleted = await remove.run(deleteTarget.id);
+            if (deleted !== null) {
+              await onChanged();
+              setDeleteTarget(null);
+              toast.success("Model removed", `${deleteTarget.name} was deleted.`);
+            }
+          }}
+          title={`Delete ${deleteTarget.name}?`}
+          description="Serials uploaded under this series keep their series, but lose this model assignment. Models used by a registered warranty cannot be deleted."
+          confirmLabel="Delete model"
+          tone="danger"
+          loading={remove.pending}
+        >
+          {remove.error ? <Alert tone="danger">{remove.error}</Alert> : null}
+        </ConfirmDialog>
+      ) : null}
     </>
   );
 }
@@ -148,6 +288,7 @@ export function SeriesImportsView() {
   const seriesResult = useAsync<SeriesOverview>(getSeries, []);
   const create = useMutation(createSeries);
   const remove = useMutation(deleteSeries);
+  const adopt = useMutation(adoptOrphanModels);
   const [name, setName] = useState("");
   const [productType, setProductType] = useState<ProductType>("inverter");
   const [selected, setSelected] = useState<{ seriesId: string } | null>(null);
@@ -243,15 +384,19 @@ export function SeriesImportsView() {
                 />
                 <CardBody className="flex flex-col gap-5">
                   <section>
-                    <h3 className="text-[13px] font-semibold text-ink">Warranty period</h3>
+                    <h3 className="text-[13px] font-semibold text-ink">
+                      Models and warranty period
+                    </h3>
                     <p className="mt-0.5 mb-3 text-[13px] text-muted">
-                      Coverage starts on the customer&apos;s installation date and runs for
-                      the term set here, so a reviewer never enters warranty dates when
-                      activating a claim.
+                      Each model under this series carries its own warranty period.
+                      Coverage starts on the customer&apos;s installation date and runs
+                      for the term of the model confirmed at activation, so a reviewer
+                      never enters warranty dates by hand.
                     </p>
-                    <WarrantyTermList
+                    <SeriesModelList
+                      seriesId={entry.id}
                       models={entry.models}
-                      onSaved={() => seriesResult.refresh()}
+                      onChanged={() => seriesResult.refresh()}
                     />
                   </section>
 
@@ -279,14 +424,37 @@ export function SeriesImportsView() {
       {unmatchedModels.length > 0 ? (
         <Card className="mt-4">
           <CardHeader
-            title="Models without an uploaded series"
-            description="These catalogue models carry a warranty term but no series of the same name has serials uploaded yet. Their terms still apply when a matching model is confirmed during activation."
+            title="Models without a series"
+            description="These models name a series that does not exist yet, so they sit outside the Series → Model → Warranty period structure. Create those series to bring them in — each model keeps its own warranty period."
+            action={
+              <Button
+                size="sm"
+                loading={adopt.pending}
+                onClick={async () => {
+                  const result = await adopt.run();
+                  if (result) {
+                    await seriesResult.refresh();
+                    toast.success(
+                      "Models organised",
+                      `${result.attachedModels} model${result.attachedModels === 1 ? "" : "s"} moved under ${result.createdSeries.length} new series.`,
+                    );
+                  }
+                }}
+              >
+                Create series and attach
+              </Button>
+            }
           />
           <CardBody>
-            <WarrantyTermList
+            {adopt.error ? (
+              <Alert tone="danger" className="mb-3">
+                {adopt.error}
+              </Alert>
+            ) : null}
+            <SeriesModelList
               models={unmatchedModels}
               showSeries
-              onSaved={() => seriesResult.refresh()}
+              onChanged={() => seriesResult.refresh()}
             />
           </CardBody>
         </Card>

@@ -4,6 +4,8 @@ export type ProductType = "inverter" | "battery" | "combo";
 
 export interface ProductModel {
   id: string;
+  /** The series this model belongs to. `series` is its name, kept for display. */
+  seriesId?: string;
   /** Product series, e.g. "AuraWatt HybridPro". */
   series: string;
   /** Full model name, e.g. "AuraWatt HybridPro 5kW". */

@@ -42,3 +42,71 @@ export async function deleteSeries(
   notifyApiRevision();
   return true;
 }
+
+/* ------------------------------------------------------------------ *
+ * Models within a series
+ *
+ * Series → Model → Warranty period. Each model carries its own term, so two
+ * models in the same series can differ.
+ * ------------------------------------------------------------------ */
+
+export interface SeriesModelInput {
+  name: string;
+  capacityKw: number;
+  warrantyMonths: number;
+}
+
+export async function createSeriesModel(
+  seriesId: string,
+  input: SeriesModelInput,
+): Promise<ProductModel> {
+  const response = await apiRequest<{ item: ProductModel }>(
+    `/series/${encodeURIComponent(seriesId)}/models`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+  notifyApiRevision();
+  return response.item;
+}
+
+export async function updateSeriesModel(
+  seriesId: string,
+  modelId: string,
+  input: Partial<SeriesModelInput>,
+): Promise<ProductModel> {
+  const response = await apiRequest<{ item: ProductModel }>(
+    `/series/${encodeURIComponent(seriesId)}/models/${encodeURIComponent(modelId)}`,
+    { method: "PATCH", body: JSON.stringify(input) },
+  );
+  notifyApiRevision();
+  return response.item;
+}
+
+export async function deleteSeriesModel(
+  seriesId: string,
+  modelId: string,
+): Promise<boolean> {
+  await apiRequest<void>(
+    `/series/${encodeURIComponent(seriesId)}/models/${encodeURIComponent(modelId)}`,
+    { method: "DELETE" },
+  );
+  notifyApiRevision();
+  return true;
+}
+
+/**
+ * Creates the missing series for catalogue models that name one, and binds
+ * them, so nothing sits outside Series → Model → Warranty period.
+ */
+export async function adoptOrphanModels(): Promise<{
+  createdSeries: ProductSeries[];
+  attachedModels: number;
+  skipped: { series: string; reason: string }[];
+}> {
+  const response = await apiRequest<{
+    createdSeries: ProductSeries[];
+    attachedModels: number;
+    skipped: { series: string; reason: string }[];
+  }>("/series/adopt-orphans", { method: "POST" });
+  notifyApiRevision();
+  return response;
+}
